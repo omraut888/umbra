@@ -58,7 +58,7 @@ def probes_file(tmp_path):
 def run_audit(server_url, kb_path, probes_file, output, *extra):
     result = CliRunner().invoke(cli, [
         "audit", "--endpoint", server_url, "--kb-path", str(kb_path), "--probes-file", str(probes_file),
-        "--output", str(output), *extra,
+        "--strategies", "none", "--no-cluster", "--output", str(output), *extra,
     ], catch_exceptions=False)
     assert result.exit_code == 0, result.output
     return result
@@ -97,7 +97,7 @@ def test_audit_reports_failed_queries_without_aborting(kb_path, probes_file, tmp
 def test_invalid_weights_rejected(server_url, kb_path, probes_file, tmp_path):
     result = CliRunner().invoke(cli, [
         "audit", "--endpoint", server_url, "--kb-path", str(kb_path), "--probes-file", str(probes_file),
-        "--output", str(tmp_path / "r.csv"), "--weights", "0.5,0.5,0.5", "--no-db",
+        "--strategies", "none", "--output", str(tmp_path / "r.csv"), "--weights", "0.5,0.5,0.5", "--no-db",
     ])
     assert result.exit_code != 0 and "sum to 1.0" in result.output
 
@@ -130,3 +130,11 @@ def test_audit_persists_to_postgres(server_url, kb_path, probes_file, tmp_path):
     for p in probes:
         assert p[2] == 384 and len(p[3]) == 5
         assert p[1] == pytest.approx(csv_scores[p[0]], abs=1e-4)
+
+
+def test_nothing_to_run_is_rejected(server_url, kb_path, tmp_path):
+    result = CliRunner().invoke(cli, [
+        "audit", "--endpoint", server_url, "--kb-path", str(kb_path), "--strategies", "none",
+        "--output", str(tmp_path / "r.csv"), "--no-db",
+    ])
+    assert result.exit_code != 0 and "nothing to run" in result.output
