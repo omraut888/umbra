@@ -172,6 +172,15 @@ def write_cluster_csv(clusters: Sequence[ClusterCoverage], path: str | Path) -> 
             })
 
 
+def write_responses(outcomes: Sequence[ProbeOutcome], path: str | Path) -> None:
+    # retrieved chunk texts, which the report needs for KB-internal recommendations;
+    # kept out of the CSV because five chunks per probe make it unreadable
+    with Path(path).open("w", encoding="utf-8") as f:
+        for o in outcomes:
+            f.write(json.dumps({"probe_id": str(o.probe_id), "chunk_ids": o.response.chunk_ids,
+                                "chunk_texts": o.response.chunk_texts}) + "\n")
+
+
 def overall_score(outcomes: Sequence[ProbeOutcome]) -> Optional[float]:
     scores = [o.score.score for o in outcomes if o.score]
     return float(np.mean(scores)) if scores else None
