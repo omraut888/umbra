@@ -553,6 +553,71 @@ bucket also dropped from 3rd to 7th, which is right: it's 140 unrelated
 leftovers, not one gap. Clusters of 50 probes or fewer keep exactly the same
 severity. Only the large ones changed.
 
+## 7. Recommendations: what the KB-internal check finds, and what it took
+
+The report recommends documents for every DARK and THIN cluster plus the ten
+most severe clusters of any tier (`src/reports/`). Candidates come from two
+places. **KB-internal** candidates are passages already in the KB that
+retrieval isn't reaching (spec §7 Strategy A). **External** candidates are web
+search results for queries Haiku writes from the cluster's questions (Strategy
+B). All candidates are ranked by simulated gain: the candidate's text replaces
+the lowest-ranked retrieved chunk for every probe in the cluster, and the
+probes are re-scored with the same three signals.
+
+**Validated against the thin topics' ground truth.** The builder buried two
+passages on purpose, and the KB-internal check handles both correctly:
+
+- *Hydroponics*: it recommends exactly the buried passage,
+  `seeds-01-indoor#1` ("...the Kratky method, is just a jar of nutrient
+  solution and a net cup..."). The passage matches the cluster at 0.517, while
+  the seed-starting chunk it sits in scores only 0.371 and is retrieved for 14%
+  of the cluster's probes. The cross-encoder says it answers 3 of the 28
+  questions.
+- *Mushrooms*: it does **not** recommend re-chunking the mulch passage, which
+  is also right. That chunk is already retrieved for 87% of the cluster's
+  probes. The content is found; there just isn't enough of it. That's a case
+  for new documents, not re-chunking.
+- *Crypto taxes and orbital mechanics*: nothing is recommended, because the
+  best matching KB passage is at 0.13.
+
+**Similarity alone wasn't enough.** The first version flagged any passage
+that matched the cluster (≥ 0.45), clearly beat its own chunk (by ≥ 0.10), and
+was retrieved for under half the probes. That found the hydroponics passage,
+but it also recommended generic sentences for unrelated clusters: "It starts
+with prevention: healthy soil, resistant varieties..." for watering,
+crop-rotation and square-foot-gardening clusters, often with a *negative*
+simulated gain. Adding one requirement fixed it: the cross-encoder has to say
+the passage answers at least one of the cluster's questions. Every generic
+passage answered 0. The hydroponics and mushroom-substrate passages answered 3
+and 2. Candidates whose simulated gain isn't positive are also dropped.
+
+**Not yet exercised end to end: web search.** External recommendations use
+Claude's web search tool by default (or Brave with `BRAVE_API_KEY`), and the
+parsing and ranking are covered by tests with a fake backend. The API credit
+ran out before they could run on the synthetic KB, so the current report has
+only the two KB-internal recommendations. Its estimated improvement is
+correspondingly small: 0.504 → 0.505 overall after applying them. The
+depth-gap clusters (Pest Control, Fungal Disease) get no recommendations yet,
+because nothing in the KB answers their questions. That's exactly what the
+web search leg is for.
+
+**Spec §10 detection targets.** `umbra benchmark calibrate` now scores the
+calibrated thresholds against the spec's own targets. On seeds 0–2, averaged
+per seed:
+
+| metric | value | target | acceptable minimum | verdict |
+|---|---|---|---|---|
+| precision | 0.78 | ≥ 0.80 | ≥ 0.70 | acceptable |
+| recall | 0.58 | ≥ 0.85 | ≥ 0.75 | **below minimum** |
+| false positive rate | 0.00 | ≤ 0.15 | ≤ 0.25 | target |
+
+Recall is the weak spot, for the reasons in section 4. Three of the 12
+injected absent topics never formed a labeled cluster (their probes scattered
+into mixed clusters or noise). Two more scored above the dark line, because
+related content was still in the KB. Nothing is falsely flagged, but a
+quarter of injected gaps go unseen at the cluster level. Their probes are
+still scored and are visible on the map and in the per-probe CSV.
+
 ### Reproducing
 
 ```
@@ -575,10 +640,12 @@ umbra audit --endpoint http://localhost:8765/query --kb-path data/synthetic_kb -
     --probes-file data/validation/validation_probes.jsonl --output out/phase2.csv
 python scripts/validate_phase2.py out/phase2.csv
 
-# findings 4 and 5
-python -m src.benchmark.gap_injection --seeds 0 1 2 3 4 --out out/benchmark
-python -m src.benchmark.calibrate out/benchmark
-python -m src.benchmark.ablation out/benchmark
+# findings 4 to 7
+umbra benchmark run --seeds 0,1,2,3,4 --out out/benchmark      # resumable
+umbra benchmark calibrate --out out/benchmark --write-thresholds out/thresholds.json
+umbra benchmark ablate --out out/benchmark
+umbra report --audit out/phase2.csv --kb-path data/synthetic_kb --output out/report.json --web-search none
+umbra dashboard --report out/report.json
 ```
 
 Probe generation goes through an LLM, so reruns won't reproduce these numbers

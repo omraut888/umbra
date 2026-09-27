@@ -82,15 +82,25 @@ instead of picking them by hand.
 5. **Classify zones**: mean score per cluster → dark (< 0.324), thin
    (0.324–0.400) or adequate (> 0.400), plus a severity score for ordering.
    The cutoffs come from a gap-injection benchmark, not the spec (below).
+6. **Report**: a GapReport JSON (`docs/gap_report.schema.json`) with every
+   cluster sorted by severity, sample questions per cluster, and document
+   recommendations for the dark, thin, and most severe clusters.
+7. **Dashboard**: the coverage map, the severity ranking, and each cluster's
+   questions and recommendations, in Plotly Dash.
 
 ```
 umbra audit --endpoint http://localhost:8765/query --kb-path path/to/kb \
     --strategies taxonomy,adversarial,counterfactual,kb_blind --topics-file topics.json \
-    --n-probes 1000 --output report.csv
+    --n-probes 1000 --output out/audit.csv
+umbra report --audit out/audit.csv --kb-path path/to/kb --output out/report.json
+umbra dashboard --report out/report.json          # http://127.0.0.1:8050/?cluster=4
 ```
 
-That writes per-probe scores to `report.csv`, the cluster table to
-`report.clusters.csv`, and everything to Postgres if `POSTGRES_DSN` is set.
+The audit writes per-probe scores to `audit.csv`, the cluster table to
+`audit.clusters.csv`, retrieved chunk text to `audit.responses.jsonl`, and
+everything to Postgres if `POSTGRES_DSN` is set. Keeping report generation
+separate means an old audit can be re-reported under new thresholds, or with
+web search, without re-querying the RAG system.
 
 ## Why it's built this way
 
@@ -163,6 +173,32 @@ labels the resulting clusters, and each threshold goes wherever F1 is highest
 between the known-gap and known-present clusters. Three-tier accuracy goes
 from 28% to 89% in-sample, 73–89% on held-out seeds.
 
+**Severity caps cluster size at 50.** The spec's `log(1 + size)` let a big,
+mostly-covered cluster outrank small real depth gaps: compost pile temperature
+(134 probes, 0.579) sat above fungal disease (28 probes, 61% of questions
+unanswered). With the cap, size can move severity by at most 1.29× between the
+smallest and largest cluster. The spec's own "500 at 0.1 beats 10 at 0.05"
+example still holds.
+
+**The tier and severity answer different questions.** The calibrated tier says
+whether a topic exists in the KB (that's what the benchmark labels). Severity
+also ranks depth gaps inside covered topics. So the report and dashboard never
+hide ADEQUATE clusters; they sort everything by severity.
+
+**Recommendations are checked, not just matched.** A KB passage gets
+recommended for re-chunking only if the cross-encoder says it actually answers
+one of the cluster's questions. Similarity alone kept recommending generic
+sentences like "It starts with prevention: healthy soil..." to unrelated
+clusters. Every candidate, from the KB or the web, is then ranked by simulated
+gain: put its text into the retrieved set for each of the cluster's probes,
+re-score, and measure the change.
+
+**The map isn't red/yellow/green.** The spec asks for RdYlGn, but red and green
+collapse for deuteranopic readers, and it's a rainbow ramp anyway. Zones are
+ordered, so the map uses one blue ramp stepped by lightness (the most urgent
+zone is the most prominent), plus a different marker shape per zone. Dark mode
+has its own steps.
+
 **The noise bucket gets its own zone.** The spec says to treat HDBSCAN noise
 as dark by default. On real runs the noise bucket is a mix: 140 probes with a
 mean of 0.455 on the synthetic KB. So it's zoned from its own scores like any
@@ -179,6 +215,9 @@ On the synthetic KB (details in [docs/findings.md](docs/findings.md)):
   absent topics, and on the benchmark they surface 0 of 12 injected gaps
   without kb_blind. The spec's claim that taxonomy probes find zero-coverage
   topics doesn't hold up.
+- The KB-internal recommender points the hydroponics gap at exactly the buried
+  passage the builder put there. It leaves mushrooms alone, correctly, because
+  that passage is already being retrieved.
 
 ## Known limitations
 
@@ -204,6 +243,14 @@ On the synthetic KB (details in [docs/findings.md](docs/findings.md)):
 - **Semantically close topics merge.** In one run, tomato and hydroponics
   questions landed in the same cluster; they are both about growing plants.
   min_cluster_size=20 and EOM selection favor bigger clusters.
+- **Recall on injected gaps is below the spec's minimum.** 0.58 against a
+  0.75 floor on the benchmark (precision 0.78, no false positives). Some
+  removed topics never form their own cluster, and some keep enough related
+  content to score above the dark line.
+- **Web search recommendations haven't run for real yet.** The code is tested
+  against a fake backend, but the API credit ran out before a live run. The
+  estimated improvement is simulated and optimistic: it assumes the retriever
+  would return the new text.
 - **HP band edges are hard cutoffs.** A probe at 0.649 gets the cross-encoder
   and one at 0.651 doesn't, so scores have a small discontinuity there.
 
@@ -240,10 +287,14 @@ umbra audit --endpoint http://localhost:8765/query --kb-path data/synthetic_kb \
     --n-probes 1000 --probes-file data/validation/validation_probes.jsonl --output out/audit.csv
 python scripts/validate_phase2.py out/audit.csv
 
-# gap-injection benchmark, threshold fit, strategy ablation
-python -m src.benchmark.gap_injection --seeds 0 1 2 3 4 --out out/benchmark
-python -m src.benchmark.calibrate out/benchmark
-python -m src.benchmark.ablation out/benchmark
+umbra report --audit out/audit.csv --kb-path data/synthetic_kb --output out/report.json
+umbra dashboard --report out/report.json
+
+# gap-injection benchmark (resumable), threshold fit, strategy ablation
+umbra benchmark run --seeds 0,1,2,3,4 --out out/benchmark
+umbra benchmark calibrate --out out/benchmark --write-thresholds out/thresholds.json
+umbra benchmark ablate --out out/benchmark
+umbra report ... --zone-thresholds-file out/thresholds.json   # use the fit
 ```
 
 Tests: `pytest`. The Postgres tests run when `POSTGRES_DSN` is set and are
