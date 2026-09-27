@@ -20,9 +20,47 @@ Umbra treats coverage as a search problem: generate a lot of questions from
 different angles, score all of them, and look for regions of question-space
 where scores are consistently low.
 
+## Other tools in this space
+
+**Answer-quality evaluators: RAGAS, TruLens, DeepEval.** These score how well
+a system answers the questions you give them (faithfulness, relevance,
+context precision). They don't generate the probing questions, so they can't
+tell you what's missing. Umbra is complementary: it produces the questions
+worth evaluating.
+
+**Tools that do look at coverage or corpus quality:**
+
+- **GapView** (academic, OpenReview 2025) is the closest peer. It maps KB
+  coverage with cosine similarity and a 2D MDS projection. The main
+  differences: it relies on a single similarity signal, whereas Umbra combines
+  retrieval similarity, chunk spread and a cross-encoder answer check, because
+  similarity alone can't tell "on-topic" from "actually answers it" (see the
+  borderline cases in `tests/scoring_cases.py`). And it has no gap-injection
+  benchmark, so there's no measured precision/recall for what it flags.
+- **semantic-coverage** does UMAP plus centroid-distance gap reports. Also a
+  single similarity signal, and one way of generating queries. Umbra's
+  strategy tags exist because different strategies find different kinds of
+  gaps (the ablation in [docs/findings.md](docs/findings.md) shows three of
+  the four can't find missing topics at all).
+- **rag-debugger** uses Gemini to decompose compound queries into sub-intents
+  and debug them. It's for understanding individual failures; there's no
+  clustering and no coverage map.
+- **RAG Doctor** (an Apify actor) runs LLM-based contradiction and gap checks
+  over crawled content. It's oriented toward auditing what a crawler
+  collected, not probing a live RAG endpoint.
+- **rag-corpus-profiler** does exploratory analysis and a security audit of a
+  RAG corpus. It's useful before indexing, but it looks at the documents, not
+  at which questions the system can answer.
+
+Where Umbra is different, as far as I can tell: it probes the live system
+through its public API, it scores each probe with three independent signals,
+it separates probe strategies so you can see which one found what, and it
+calibrates its dark/thin/adequate cutoffs against a benchmark with known gaps
+instead of picking them by hand.
+
 ## How it works
 
-1. **Generate probes.** Three strategies, each tagged so results can be sliced
+1. **Generate probes.** Four strategies, each tagged so results can be sliced
    by strategy later:
    - *taxonomy*: BERTopic over the KB chunks, then Claude Haiku writes
      questions per topic
@@ -31,6 +69,8 @@ where scores are consistently low.
      document answers
    - *counterfactual*: questions that look answerable from a real chunk but
      need one fact it doesn't contain
+   - *kb_blind*: questions written from a list of topics the KB is supposed
+     to cover (or a one-line domain description), without looking at the KB
 
    You can also pass your own probes (e.g. real user queries) with
    `--probes-file`. Everything is deduplicated at cosine 0.95.
@@ -39,11 +79,13 @@ where scores are consistently low.
 3. **Score each probe** from 0 to 1 using three signals (below).
 4. **Cluster**: UMAP to 10D, HDBSCAN, UMAP to 2D for display, Haiku names each
    cluster from its three most central questions.
-5. **Classify zones**: mean score per cluster → dark (< 0.30), thin
-   (0.30–0.60) or adequate (> 0.60), plus a severity score for ordering.
+5. **Classify zones**: mean score per cluster → dark (< 0.324), thin
+   (0.324–0.400) or adequate (> 0.400), plus a severity score for ordering.
+   The cutoffs come from a gap-injection benchmark, not the spec (below).
 
 ```
 umbra audit --endpoint http://localhost:8765/query --kb-path path/to/kb \
+    --strategies taxonomy,adversarial,counterfactual,kb_blind --topics-file topics.json \
     --n-probes 1000 --output report.csv
 ```
 
@@ -106,6 +148,21 @@ nothing at all. I wrote the documents by hand instead of generating them so
 nothing leaks: the builder refuses to run if a thin or absent topic shows up
 anywhere it shouldn't.
 
+**A fourth strategy that never reads the KB.** The spec's three strategies all
+start from the documents, which means they can't ask about a topic that has no
+documents. The benchmark confirms it: on their own they surfaced 0 of 12
+injected gaps. kb_blind asks about what the KB *should* cover instead. It's
+sized per topic rather than as a share of the probe budget, because a topic
+needs at least 20 probes (min_cluster_size) to form a cluster of its own.
+
+**Thresholds fit on known gaps.** The spec's 0.30/0.60 cutoffs assume scores
+that can reach 1.0. With MiniLM, a question that's actually answered averages
+about 0.67. The benchmark removes documents from the synthetic KB (or cuts a
+topic down to a buried two-sentence mention) and runs the whole audit. It
+labels the resulting clusters, and each threshold goes wherever F1 is highest
+between the known-gap and known-present clusters. Three-tier accuracy goes
+from 28% to 89% in-sample, 73–89% on held-out seeds.
+
 **The noise bucket gets its own zone.** The spec says to treat HDBSCAN noise
 as dark by default. On real runs the noise bucket is a mix: 140 probes with a
 mean of 0.455 on the synthetic KB. So it's zoned from its own scores like any
@@ -115,23 +172,30 @@ other cluster, and it's reported separately.
 
 On the synthetic KB (details in [docs/findings.md](docs/findings.md)):
 
-- The two absent topics each come out as their own pure dark cluster and rank
-  #1 and #2 by severity. The thin topics each get a thin cluster.
-- None of the three generation strategies ever produces a question about the
-  absent topics. Only the KB-blind question set does. That follows from how
-  they work (they all start from the KB's documents), and it matters: the
-  spec's claim that taxonomy probes find zero-coverage topics doesn't hold up.
-- Full-coverage topics score around 0.58–0.68, right at the adequate line,
-  because well-answered probes top out around 0.70 with MiniLM (see below).
+- The two off-domain absent topics each come out as their own pure dark cluster
+  and rank #1 and #2 by severity. Full-coverage topics are adequate. Of the
+  two thin topics, one is thin and one falls just under the dark line.
+- None of the three KB-anchored strategies ever produces a question about the
+  absent topics, and on the benchmark they surface 0 of 12 injected gaps
+  without kb_blind. The spec's claim that taxonomy probes find zero-coverage
+  topics doesn't hold up.
 
 ## Known limitations
 
-- **Zone thresholds aren't calibrated.** The 0.30/0.60 cutoffs come from the
-  spec, but with MiniLM a question that's genuinely answered scores about 0.67
-  on average and at most 0.75. Rankings and severity are right; absolute tiers
-  run pessimistic. Thresholds should be calibrated per embedding model.
-- **Out-of-domain gaps need outside questions.** See above. Without real query
-  logs, Umbra finds gaps *near* the KB well and gaps *far* from it not at all.
+- **The thresholds are fit on three seeds.** The API credit ran out before
+  seeds 3 and 4. Leave-one-seed-out puts dark_below anywhere from 0.322 to
+  0.364. They're also tied to MiniLM, dispersion SE and this probe mix; change
+  any of those and they need re-fitting.
+- **Thin and absent barely separate.** In-domain absent clusters average 0.336
+  and thin ones 0.348. The dark line between them is a close call, and
+  hydroponics lands on the wrong side of it.
+- **The adequate line hides depth gaps.** It's fit on "does this topic have
+  documents", so clusters of questions the documents don't answer in depth
+  (the adversarial ones, mostly) now read as adequate. Catching those needs a
+  different ground truth.
+- **kb_blind only covers what you list.** It finds missing topics inside the
+  topic list or domain you hand it. Gaps nobody anticipated still need real
+  user queries.
 - **Probe generation isn't reproducible.** It goes through an LLM. Scoring,
   clustering and UMAP are deterministic given the same probes.
 - **One embedding model.** RC, SE, dedup, and clustering all use MiniLM. A
@@ -145,11 +209,12 @@ On the synthetic KB (details in [docs/findings.md](docs/findings.md)):
 
 ## What I'd do next / differently
 
-- Calibrate zone thresholds with the gap-injection benchmark (remove document
-  clusters from a real KB and check they turn dark) instead of hand-picked
-  numbers.
-- Add the user-pattern strategy over real query logs. On this evidence it's
-  the only one that can reach out-of-domain gaps.
+- Finish the benchmark seeds, then run it on a real KB instead of the synthetic
+  one.
+- Calibrate the upper threshold against depth gaps (the share of a cluster's
+  probes the cross-encoder says are answered), not just topic presence.
+- Add the user-pattern strategy over real query logs, for the gaps nobody
+  would think to list.
 - Try a stronger embedding model for scoring and see how much of the ceiling
   problem goes away.
 - Replace the hard HP band with something smoother, or run HP on everything
@@ -174,6 +239,11 @@ alembic upgrade head
 umbra audit --endpoint http://localhost:8765/query --kb-path data/synthetic_kb \
     --n-probes 1000 --probes-file data/validation/validation_probes.jsonl --output out/audit.csv
 python scripts/validate_phase2.py out/audit.csv
+
+# gap-injection benchmark, threshold fit, strategy ablation
+python -m src.benchmark.gap_injection --seeds 0 1 2 3 4 --out out/benchmark
+python -m src.benchmark.calibrate out/benchmark
+python -m src.benchmark.ablation out/benchmark
 ```
 
 Tests: `pytest`. The Postgres tests run when `POSTGRES_DSN` is set and are
