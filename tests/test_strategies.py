@@ -1,4 +1,5 @@
 import itertools
+import json
 
 import pytest
 
@@ -96,3 +97,56 @@ async def test_generate_probe_set_dedups_across_strategies():
     probes, topics = await generate_probe_set(CHUNKS, 10, ["adversarial", "counterfactual"], fake, extra)
     assert topics is None
     assert sorted(p.query for p in probes) == ["How wet should compost be?", "What is the ideal carbon to nitrogen ratio?"]
+
+
+def test_load_topics_file_formats(tmp_path):
+    from src.probe_generation.kb_blind import TopicSpec, load_topics_file
+
+    listy = tmp_path / "a.json"
+    listy.write_text(json.dumps([{"name": "soil", "description": "Soil pH."}]))
+    mapping = tmp_path / "b.json"
+    mapping.write_text(json.dumps({"soil": "Soil pH."}))
+    gt = tmp_path / "c.json"
+    gt.write_text(json.dumps({"topics": {"hydroponics": {"tier": "thin", "description": "No soil."}},
+                              "background_topics": {"soil": {"description": "Soil pH.", "documents": []}}}))
+    assert load_topics_file(listy) == load_topics_file(mapping) == [TopicSpec("soil", "Soil pH.")]
+    assert load_topics_file(gt) == [TopicSpec("hydroponics", "No soil."), TopicSpec("soil", "Soil pH.")]
+
+
+async def test_enumerate_domain_topics_parses_name_colon_description():
+    from src.probe_generation.kb_blind import enumerate_domain_topics
+
+    async def fake(prompt):
+        assert "home gardening" in prompt
+        return "Here you go:\n1. **Composting**: Turning scraps into compost.\n- Irrigation: Watering systems.\nno colon here"
+
+    topics = await enumerate_domain_topics("home gardening", fake)
+    assert [t.name for t in topics] == ["Composting", "Irrigation"]
+    assert topics[1].description == "Irrigation: Watering systems."
+
+
+async def test_kb_blind_never_sees_kb_and_labels_by_topic():
+    from src.probe_generation.kb_blind import TopicSpec, kb_blind_generation
+
+    counter = itertools.count()
+    prompts = []
+
+    async def fake(prompt):
+        prompts.append(prompt)
+        return "\n".join(distinct_question(next(counter)) for _ in range(4))
+
+    topics = [TopicSpec("soil", "Soil pH and texture."), TopicSpec("tax", "Crypto taxes.")]
+    probes = await kb_blind_generation(topics, 6, fake)
+    assert [p.topic for p in probes] == ["soil"] * 6 + ["tax"] * 6
+    assert all(p.strategy == "kb_blind" for p in probes)
+    assert not any("Chunk number" in p for p in prompts)
+
+
+async def test_kb_blind_requires_topics():
+    with pytest.raises(ValueError, match="kb_blind needs"):
+        await generate_probe_set(CHUNKS, 10, ["kb_blind"], None)
+
+
+def test_split_budget_ignores_kb_blind():
+    assert split_budget(100, ["kb_blind", "counterfactual"]) == {"counterfactual": 100}
+    assert split_budget(100, ["kb_blind"]) == {}

@@ -2,7 +2,7 @@
 
     python scripts/validate_phase2.py out/phase2.csv
 
-Only the KB-blind probes (strategy "ground_truth") carry a ground-truth topic,
+Only the KB-blind probes (strategy "kb_blind") carry a ground-truth topic,
 so they're the ones used to check where each topic ended up. Generated probes
 show up in the strategy mix.
 """
@@ -24,14 +24,14 @@ def main(path: str) -> None:
 
     gt_by_cluster = defaultdict(Counter)
     for p in probes:
-        if p["generation_strategy"] == "ground_truth" and p["cluster_id"] != "":
+        if p["generation_strategy"] in ("kb_blind", "ground_truth") and p["cluster_id"] != "":
             gt_by_cluster[p["cluster_id"]][p["probe_topic"]] += 1
 
     print(f"{'id':>4}  {'name':<38} {'size':>5} {'mean_cs':>8} {'tier':<9} {'severity':>8}  "
-          f"{'strategies (tax/adv/cf/gt)':<27} ground-truth probes in cluster")
+          f"{'strategies (tax/adv/cf/blind)':<27} ground-truth probes in cluster")
     for c in sorted(clusters, key=lambda c: -float(c["severity"])):
         mix = json.loads(c["strategy_mix"])
-        mix_s = "/".join(str(mix.get(s, 0)) for s in ("taxonomy", "adversarial", "counterfactual", "ground_truth"))
+        mix_s = "/".join(str(mix.get(s, 0)) for s in ("taxonomy", "adversarial", "counterfactual", "kb_blind"))
         gt = ", ".join(f"{t}:{n}" for t, n in gt_by_cluster[c["cluster_id"]].most_common())
         print(f"{c['cluster_id']:>4}  {c['name'][:38]:<38} {c['query_count']:>5} {float(c['mean_cs']):>8.3f} "
               f"{c['zone']:<9} {float(c['severity']):>8.2f}  {mix_s:<27} {gt}")
@@ -41,7 +41,7 @@ def main(path: str) -> None:
     print("\nWhere each ground-truth topic landed")
     for topic, tier in tiers.items():
         where = Counter(p["cluster_id"] for p in probes
-                        if p["generation_strategy"] == "ground_truth" and p["probe_topic"] == topic)
+                        if p["generation_strategy"] in ("kb_blind", "ground_truth") and p["probe_topic"] == topic)
         total = sum(where.values())
         top, n = where.most_common(1)[0]
         zones = Counter()

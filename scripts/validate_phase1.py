@@ -1,7 +1,7 @@
 """Phase 1 validation against the synthetic KB's ground truth.
 
-    # 1. Labeled probes: N questions per ground-truth topic, written by Claude
-    #    from the topic *description* only (it never sees the KB).
+    # 1. Labeled probes: N kb_blind questions per ground-truth topic, written by
+    #    Claude Haiku from the topic *description* only (it never sees the KB).
     python scripts/validate_phase1.py probes --n-per-topic 40
 
     # 2. Run audits with the CLI (see README), then:
@@ -34,57 +34,26 @@ KB = Path("data/synthetic_kb")
 EXPECTED_ZONE = {"full": "ADEQUATE", "thin": "THIN", "absent": "DARK"}
 TIER_ORDER = {"full": 0, "thin": 1, "absent": 2}
 
-PROBE_PROMPT = """Write {k} different questions that a user might ask a knowledge base about this topic:
-
-{description}
-
-Mix simple questions with detailed, specific ones, and vary the type (factual lookup, comparison, causal, procedural, definitional).
-{avoid}
-Return only the questions, one per line. No numbering, no explanation."""
-
-
 def zone(score: float) -> str:
-    """Spec §6 thresholds."""
-    return "DARK" if score < 0.30 else "THIN" if score <= 0.60 else "ADEQUATE"
+    from src.clustering.zones import classify_zone
 
-
-async def _generate(topic: str, description: str, n: int, complete) -> List[str]:
-    from src.probe_generation.taxonomy import parse_questions
-
-    questions: Dict[str, None] = {}
-    for _ in range(n):  # hard cap on calls
-        if len(questions) >= n:
-            break
-        avoid = ""
-        if questions:
-            avoid = "\nDo not repeat any of these:\n" + "\n".join(f"- {q}" for q in list(questions)[-30:]) + "\n"
-        text = await complete(PROBE_PROMPT.format(k=min(10, n - len(questions)), description=description, avoid=avoid))
-        for q in parse_questions(text):
-            questions.setdefault(q, None)
-    return list(questions)[:n]
+    return classify_zone(score)
 
 
 def cmd_probes(args) -> None:
-    from src.probe_generation.taxonomy import Probe, anthropic_completer, dedup_probes
+    # the same code path as `umbra audit --strategies kb_blind --topics-file ground_truth.json`,
+    # restricted to the six evaluated topics
+    from src.probe_generation.kb_blind import TopicSpec, kb_blind_generation
+    from src.probe_generation.taxonomy import anthropic_completer, dedup_probes
 
     gt = json.loads((args.kb / "ground_truth.json").read_text())
-    complete = anthropic_completer()
-
-    async def run():
-        return await asyncio.gather(*(
-            _generate(name, t["description"], args.n_per_topic, complete) for name, t in gt["topics"].items()
-        ))
-
-    results = asyncio.run(run())
-    probes = [Probe(query=q, topic=name, strategy="ground_truth")
-              for name, qs in zip(gt["topics"], results) for q in qs]
-    probes = dedup_probes(probes)
+    topics = [TopicSpec(name, t["description"]) for name, t in gt["topics"].items()]
+    probes = dedup_probes(asyncio.run(kb_blind_generation(topics, args.n_per_topic, anthropic_completer())))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w") as f:
         for p in probes:
             f.write(json.dumps({"query": p.query, "topic": p.topic, "strategy": p.strategy}) + "\n")
-    counts = Counter(p.topic for p in probes)
-    print(f"Wrote {len(probes)} labeled probes to {args.out}: {dict(counts)}")
+    print(f"Wrote {len(probes)} labeled probes to {args.out}: {dict(Counter(p.topic for p in probes))}")
 
 
 def _rows(path: Path) -> List[dict]:

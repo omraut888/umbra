@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from src.data.kb_loader import Chunk
 from src.probe_generation.adversarial import adversarial_boundary_generation
 from src.probe_generation.counterfactual import counterfactual_generation
+from src.probe_generation.kb_blind import TopicSpec, kb_blind_generation
 from src.probe_generation.taxonomy import (
     AsyncComplete,
     Probe,
@@ -21,16 +22,24 @@ from src.probe_generation.taxonomy import (
     taxonomy_guided_generation,
 )
 
-# spec §3 probe set composition. The 10% "userpattern" share needs production
-# query logs, so it isn't generated here; the remaining shares are renormalized.
+# spec §3 probe set composition for the KB-anchored strategies. The 10%
+# "userpattern" share needs production query logs, so it isn't generated; the
+# remaining shares are renormalized.
 STRATEGY_SHARES = {"taxonomy": 0.40, "adversarial": 0.30, "counterfactual": 0.20}
-ALL_STRATEGIES = tuple(STRATEGY_SHARES)
+# kb_blind isn't part of the share split. It's sized per topic instead: a topic
+# needs at least min_cluster_size probes (20) to come out as its own cluster,
+# and a 10% share of 1000 spread over 15 topics would leave every missing topic
+# scattered in noise.
+ALL_STRATEGIES = (*STRATEGY_SHARES, "kb_blind")
 
 
 def split_budget(n: int, strategies: Sequence[str]) -> Dict[str, int]:
-    unknown = set(strategies) - set(STRATEGY_SHARES)
+    unknown = set(strategies) - set(ALL_STRATEGIES)
     if unknown:
         raise ValueError(f"unknown strategies {sorted(unknown)}; choose from {ALL_STRATEGIES}")
+    strategies = [s for s in strategies if s in STRATEGY_SHARES]
+    if not strategies:
+        return {}
     total = sum(STRATEGY_SHARES[s] for s in strategies)
     budget = {s: int(n * STRATEGY_SHARES[s] / total) for s in strategies}
     # hand the rounding remainder to the first strategy so the total is exact
@@ -44,9 +53,13 @@ async def generate_probe_set(
     strategies: Sequence[str],
     complete: AsyncComplete,
     extra_probes: Sequence[Probe] = (),
+    kb_blind_topics: Sequence[TopicSpec] = (),
+    kb_blind_per_topic: int = 30,
 ) -> Tuple[List[Probe], Optional[List[Topic]]]:
     """Returns (deduplicated probes, taxonomy topics if taxonomy ran)."""
-    budget = split_budget(n, strategies) if strategies else {}
+    budget = split_budget(n, strategies)
+    if "kb_blind" in strategies and not kb_blind_topics:
+        raise ValueError("kb_blind needs topic descriptions (a topics file or a domain description)")
     topics = extract_taxonomy(chunks) if "taxonomy" in budget else None
 
     jobs = {}
@@ -56,6 +69,9 @@ async def generate_probe_set(
         jobs["adversarial"] = adversarial_boundary_generation(chunks, budget["adversarial"], complete)
     if "counterfactual" in budget:
         jobs["counterfactual"] = counterfactual_generation(chunks, budget["counterfactual"], complete)
+
+    if "kb_blind" in strategies:
+        jobs["kb_blind"] = kb_blind_generation(kb_blind_topics, kb_blind_per_topic, complete)
 
     results = await asyncio.gather(*jobs.values())
     combined = [p for batch in results for p in batch] + list(extra_probes)

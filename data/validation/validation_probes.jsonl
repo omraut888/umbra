@@ -1,237 +1,237 @@
-{"query": "What is the ideal carbon-to-nitrogen ratio for a compost pile?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How do I build a basic compost bin in my backyard?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Why does my compost smell like ammonia?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What's the difference between hot and cold composting methods?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How often should I turn my compost pile, and why?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Can I use finished compost directly on my vegetable garden, or does it need to cure further?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What are the main differences between traditional composting and vermicomposting?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How do I know if my compost has the right moisture level?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What should I do if my compost pile isn't breaking down quickly enough?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Which materials are considered \"greens\" and which are \"browns\" in composting?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What is vermicomposting and how does it differ from traditional pile composting in terms of space requirements?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How long does it typically take to produce finished compost using hot composting versus cold composting methods?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What causes a compost pile to become anaerobic, and how can I prevent this from happening?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Can I add meat, dairy, or oils to my compost pile, and if not, why are these materials problematic?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How do I transition from an active compost pile to using the finished product in my garden beds?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What temperature range indicates that my hot compost pile is working efficiently?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Why might my compost pile be attracting rodents or insects, and what can I do about it?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How do I set up and maintain a worm bin for vermicomposting in an apartment or small space?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What adjustments should I make to my composting method if I live in a very dry or very wet climate?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Is bokashi composting a viable alternative to traditional home composting, and what are its main advantages?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What materials should I add to my compost pile to maintain the proper balance between carbon and nitrogen?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How do I aerate my compost pile without turning it manually?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What is the minimum temperature my compost pile needs to reach to kill weed seeds and pathogens?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Can I compost grass clippings, and if so, how should I layer them to avoid creating a matted, slimy mess?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Why is my vermicompost bin producing a foul odor despite proper moisture levels?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What are the signs that my compost pile has enough aeration and is decomposing at an optimal rate?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How should I prepare my finished compost before applying it to different types of plants?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What is the difference between adding kitchen scraps to a worm bin versus a traditional outdoor compost pile?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How can I speed up the decomposition of stubborn materials like woody branches or cardboard in my compost system?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "If my compost pile feels soggy and is decomposing slowly, what specific steps should I take to fix the problem?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What materials should I avoid adding to my compost pile, and what happens if I accidentally include them?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How can I tell if my compost pile is getting enough air circulation, and what are the consequences of poor aeration?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What is the best way to layer browns and greens when building a new compost pile from scratch?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Why might my cold compost pile take much longer than expected to fully decompose?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How do I set up a vermicomposting system in my kitchen, and what are the space and maintenance requirements?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What adjustments should I make to my compost pile during extremely wet or dry weather conditions?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Can I add diseased plant material or weeds with seeds to my compost, and how does temperature affect whether these threats are neutralized?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What is the most effective way to introduce finished compost into different garden areas, such as container gardens versus in-ground beds?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "Why is my worm bin producing leachate, and should I be concerned about this liquid byproduct?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "How do I troubleshoot a compost pile that appears to have stopped decomposing entirely despite having the right materials and moisture level?", "topic": "composting", "strategy": "ground_truth"}
-{"query": "What is the difference between determinate and indeterminate tomato varieties?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How do I start tomato seedlings from seed indoors?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Why do my tomatoes have dark spots on the bottom of the fruit?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "When should I transplant seedlings into larger pots before moving them to the garden?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What is a tomato sucker and why should I prune them?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Should I use stakes or cages for my tomato plants, and what are the pros and cons of each?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How often should I water my tomato plants during the growing season?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What causes early blight on tomatoes and how can I prevent it?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How do I identify and control hornworms in my tomato garden?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "At what stage of ripeness should I harvest tomatoes for the best flavor and storage?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How much fertilizer do I need to apply to my tomato plants each month?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What are the best practices for hardening off tomato seedlings before transplanting them outdoors?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Can I prevent blossom end rot by adjusting my watering schedule, and what other factors contribute to this condition?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What is the difference between pruning suckers and removing lower leaves for disease prevention?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How do I know when a tomato plant has a disease versus a nutrient deficiency?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What should I do if I find hornworm eggs or small larvae on my tomato plants early in the season?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Why do some gardeners recommend removing flowers from tomato plants in early summer?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Can determinate tomatoes be grown successfully in containers, and do they still need support structures?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What are companion plants that help protect tomatoes from pests and diseases?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How can I ripen green tomatoes at the end of the season if frost is coming?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Can I use the same soil from last year's garden to start my tomato seedlings indoors?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What nutrient deficiencies cause yellowing leaves on tomato plants, and how do I correct them?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How does consistent versus inconsistent watering affect tomato plant health and fruit quality?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What is the best method for sterilizing tomato cages and stakes between growing seasons to prevent disease?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Which common tomato diseases are fungal versus bacterial, and do they require different treatment approaches?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "If I accidentally break the main stem of my indeterminate tomato plant, can it recover?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What are the signs that a hornworm infestation has begun, and what organic control methods work best?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How do I create a balanced fertilizer schedule that prevents both nutrient deficiency and over-fertilization?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Are there tomato varieties that are naturally resistant to early blight and other common diseases?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What happens to fruit quality if I harvest tomatoes at different stages of the pink or light red stage?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Can I save seeds from my homegrown tomatoes, and will they produce plants identical to the parent plant?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What causes flower drop on tomato plants, and how can I prevent my plants from losing their blooms before fruit sets?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How do I transition seedlings from an indoor grow light setup to outdoor garden conditions?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What are the signs of overwatering versus underwatering in tomato plants?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Is it necessary to remove the lower leaves of tomato plants as they grow, and when should I start doing this?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How do I construct an effective support system for indeterminate varieties that will last through the entire growing season?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What integrated pest management strategies can I use to control hornworms without using chemical pesticides?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "Can I grow determinate tomato varieties in the same garden bed year after year, or do I need to rotate crops?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What is the difference between early blight and late blight on tomatoes, and how are their treatments different?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "How do I know if my tomato plants need fertilizer, and what do nutrient deficiencies look like?", "topic": "tomato_growing", "strategy": "ground_truth"}
-{"query": "What is hydroponics?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How does the nutrient film technique differ from deep water culture?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "Why is pH management important in hydroponic systems?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What crops are best suited for hydroponic growing?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How do I mix nutrients for a hydroponic solution?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What causes electrical conductivity to change in a hydroponic reservoir?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "Can you explain how an ebb and flow system works?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What type of lighting is most suitable for indoor hydroponic gardens?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What are the advantages of using the Kratky method for beginners?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How do I troubleshoot nutrient deficiencies in my hydroponic plants?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What is the ideal EC range for growing lettuce hydroponically?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How often should I change the nutrient solution in a deep water culture system?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What is the relationship between water temperature and dissolved oxygen in hydroponic systems?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "Can I use tap water directly in my hydroponic reservoir, or do I need to treat it first?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "Why might my hydroponic plants show signs of stress even when pH and EC levels appear normal?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What equipment do I need to set up a basic ebb and flow system at home?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How does light intensity affect growth rates in hydroponic tomato production?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What are the main differences between using synthetic nutrients versus organic nutrient solutions in hydroponics?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "If my pH keeps dropping in my hydroponic system, what could be causing this problem?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "Which hydroponic system requires the least maintenance for a small-scale operation?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How do I adjust pH in a hydroponic system if it keeps rising above the target range?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What's the difference between EC and PPM, and how do they relate to nutrient concentration?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "Can I grow herbs and leafy greens together in the same Kratky system, or do they need separate setups?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "Why is dissolved oxygen important in deep water culture, and how can I increase it?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What happens if I mix incompatible nutrient brands in my hydroponic solution?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How long does it typically take to see growth results when switching from soil to a nutrient film technique system?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What are the main pros and cons of using LED grow lights versus fluorescent lights for hydroponics?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "If my ebb and flow system timer fails, what's the immediate impact on my plants?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How do I know if my hydroponic solution needs a complete water change versus just adding nutrients?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What role does water hardness play in hydroponic nutrient availability, and should I be concerned about it?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What is the main purpose of measuring electrical conductivity in a hydroponic system?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How do I know when to completely replace the water in my hydroponic reservoir versus just topping it up?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What happens if I don't provide adequate aeration in a deep water culture setup?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "Can I grow different plant species with different nutrient requirements in the same hydroponic system?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What is the difference between PPM and EC measurements, and which one should I prioritize?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "Why do some hydroponic growers prefer the nutrient film technique for commercial lettuce production?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "How does water temperature affect nutrient uptake and plant health in hydroponics?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What are the main reasons a Kratky system might not be suitable for long-term crop production?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "If I'm mixing my own hydroponic nutrient solution from individual components, what's the correct order to add them?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What impact does hard tap water have on pH stability and nutrient availability in hydroponic systems?", "topic": "hydroponics", "strategy": "ground_truth"}
-{"query": "What is mushroom spawn and what are the different types available?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How do oyster mushrooms compare to shiitake mushrooms in terms of difficulty for beginners?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "Why is pasteurization of straw substrate important before inoculating it with mushroom spawn?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What is the step-by-step process for inoculating a hardwood log with shiitake spawn?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What humidity level should I maintain for fruiting wine cap mushrooms indoors?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "Can I use wood chips instead of straw for growing oyster mushrooms, and what are the differences?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What causes contamination in mushroom growing, and how can I prevent it?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How do I know when oyster mushrooms are ready to harvest, and will they produce multiple flushes?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What is the difference between sterilization and pasteurization in the context of mushroom substrate preparation?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How long does it typically take from inoculation to first harvest with wine cap mushrooms on straw?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What temperature should I maintain during the colonization phase after inoculating my substrate?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How does the fruiting environment differ between growing mushrooms indoors versus outdoors on logs?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What are the signs that my mushroom substrate has become contaminated with mold or bacteria?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "Can I reuse wood chips from a previous mushroom flush for growing another batch?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "Why do some growers prefer spawn in grain form over liquid culture or sawdust spawn?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What is the ideal fruiting trigger for oyster mushrooms, and how do I initiate it in my growing setup?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How many flushes can I expect from a single inoculated log over its productive lifetime?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What equipment do I need to properly sterilize substrate using a pressure cooker versus other methods?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "Is it necessary to soak logs before inoculating them with spawn, and why or why not?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How can I tell the difference between a contaminated pin site and the beginning of healthy mushroom primordia formation?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What are wine cap mushrooms, and what makes them different from oyster and shiitake varieties?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How do I choose between grain spawn, sawdust spawn, and liquid culture for my first mushroom growing project?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What is the ideal temperature range during the colonization phase after inoculating my substrate?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "Can I reuse substrate or wood chips from a previous flush, and what precautions should I take?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What are the visible signs that indicate my mushroom substrate has been successfully colonized and is ready for fruiting?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "Why do some mushroom growers prefer soaking logs before inoculation, and is it absolutely necessary?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What is the difference between a contamination problem and the natural appearance of healthy mushroom pin formation?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How many times can a single log produce mushroom flushes before it becomes exhausted?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What environmental adjustments do I need to make when transitioning from the colonization phase to the fruiting phase?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "Is there a significant difference in yield or quality between mushrooms grown on straw versus those grown on logs?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "Is soaking logs before inoculation necessary, and what benefits does it provide?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What types of mushroom spawn should a beginner use, and which is easiest to work with?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How do I transition my substrate from the colonization phase to the fruiting phase?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What are the main differences between oyster, shiitake, and wine cap mushrooms in terms of growing difficulty?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What visible signs indicate that my substrate has been fully colonized and is ready to fruit?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How does growing mushrooms on logs outdoors differ from indoor cultivation on straw or wood chips?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How can I distinguish between contamination and the natural formation of healthy mushroom pins?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "What is the typical yield difference between growing mushrooms on straw versus on inoculated logs?", "topic": "mushroom_cultivation", "strategy": "ground_truth"}
-{"query": "How is Bitcoin classified for tax purposes?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What is the difference between long-term and short-term capital gains on cryptocurrency?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "Why does the IRS consider crypto staking rewards to be taxable income?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What are the different cost basis methods available for calculating cryptocurrency gains?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How do I report cryptocurrency transactions on my tax return?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "Does trading one cryptocurrency for another trigger a taxable event?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What records do I need to keep for cryptocurrency transactions?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "Can I claim a loss on cryptocurrency if the value drops?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How is mining income taxed differently from staking income?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What is the wash sale rule and does it apply to digital assets like Bitcoin?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "When do I need to report a cryptocurrency transaction as a taxable event?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What forms should I file if I received Bitcoin through mining in 2023?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How does the IRS determine which specific coins I sold when I don't track individual lots?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What is the difference between FIFO, LIFO, and specific identification cost basis methods?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "If I gift cryptocurrency to a family member, is that considered a taxable event?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How should I report staking rewards that I received but haven't sold yet?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What penalties might I face for not reporting cryptocurrency transactions on my taxes?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "Can I deduct trading fees and transaction costs from my cryptocurrency capital gains?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How do airdrops and token distributions affect my tax liability?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What documentation do tax authorities expect to see for large cryptocurrency transactions?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What happens to my tax liability if I receive free cryptocurrency through an airdrop?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "Can I deduct the fees I paid to a crypto exchange when calculating my capital gains or losses?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How should I handle the tax reporting if I convert my mining rewards into fiat currency months after earning them?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What is the difference between a taxable event and a non-taxable transfer in cryptocurrency transactions?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "If I lost access to my private keys and can't sell my Bitcoin, do I still have reporting obligations to the IRS?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How does the IRS track my cryptocurrency transactions if I use multiple exchanges and wallets?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What are the consequences of using the wrong cost basis method to calculate my crypto gains?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "Do I need to report each small transaction separately, or can I aggregate cryptocurrency trades for tax purposes?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How do I determine the fair market value of a token I received through staking when there's no clear market price?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What additional documentation should I prepare if the IRS audits my cryptocurrency transactions?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How do I determine the fair market value of cryptocurrency I received as staking rewards when prices fluctuate throughout the day?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What happens to my tax obligations if I transfer cryptocurrency between my own wallets on different exchanges?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "Can I use different cost basis methods for different batches of cryptocurrency, or must I choose one method for all transactions?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How should I report cryptocurrency losses if I'm not actively trading but holding long-term?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What is the difference between a fork and an airdrop in terms of tax treatment and reporting requirements?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "If I pay someone in Bitcoin for goods or services, what tax forms do both parties need to file?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How do I calculate my cost basis if I purchased cryptocurrency gradually over time and then sold it in one large transaction?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What documentation should I keep to defend my cryptocurrency tax reporting in case of an IRS inquiry?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "Are there any circumstances under which a cryptocurrency transaction would not be considered a taxable event?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "How does the timing of when I receive versus when I sell mining rewards affect my overall tax liability?", "topic": "cryptocurrency_taxation", "strategy": "ground_truth"}
-{"query": "What is escape velocity and how is it calculated?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "Why do geostationary satellites remain fixed above the same location on Earth?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How does a Hohmann transfer orbit work, and when is it used in spaceflight?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What are Kepler's three laws of planetary motion?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is the difference between orbital velocity and escape velocity?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How do gravity assists allow spacecraft to gain speed without using fuel?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What factors influence the delta-v budget needed for a space mission?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "Can a spacecraft change its orbital inclination, and why is this maneuver so costly in terms of fuel?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is a low Earth orbit, and what are its typical characteristics and uses?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What orbital altitude would a satellite need to maintain a geostationary orbit around Earth?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How does the vis-viva equation relate to orbital velocity at different points in an elliptical orbit?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "Why is it generally more efficient to use a Hohmann transfer than a direct trajectory when moving between two circular orbits?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is orbital inclination and how does it affect a satellite's ground track?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "Can you explain the relationship between orbital period and orbital radius according to Kepler's third law?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How would you calculate the total delta-v required for a mission that includes a launch to low Earth orbit followed by a trans-lunar injection?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What advantages and disadvantages do low Earth orbits have compared to geostationary orbits for different applications?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How does the Moon's gravity assist a spacecraft traveling from Earth to the outer planets?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is the minimum velocity needed to maintain a stable circular orbit at a given altitude?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "Why does changing a satellite's orbital inclination require significantly more fuel than raising or lowering its altitude?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What determines whether a spacecraft will remain in a stable orbit or fall back to Earth?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How do mission planners calculate the total delta-v budget for a multi-stage space mission?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is the relationship between orbital altitude and orbital period for any celestial body?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "Why does a spacecraft need less delta-v to lower its orbit than to raise it?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is meant by \"orbital inclination\" and how does it constrain which targets a satellite can reach?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How would you use a gravity assist to reduce the fuel requirements for an interplanetary mission?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is the minimum and maximum orbital velocity possible for a stable circular orbit around Earth?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What are the practical advantages of launching spacecraft into low Earth orbit before conducting further maneuvers to other destinations?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is the relationship between an object's distance from a central body and the time it takes to complete one orbital revolution?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How do mission planners use delta-v budgets to determine whether a proposed space mission is feasible with available propellant?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is orbital velocity and how does it change as a spacecraft moves through different points in an elliptical orbit?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "Why is launching to low Earth orbit first, rather than directly to geostationary orbit, a more practical approach for most space missions?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "Can you explain what orbital inclination is and why certain launch sites are better suited for reaching specific orbital inclinations?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How would a spacecraft execute a plane change to shift from one orbital inclination to another, and what makes this maneuver particularly expensive?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What determines the altitude at which a geostationary satellite must orbit, and how does this compare to the altitude of a typical low Earth orbit?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How do mission designers use gravity assists from planets to reduce the fuel consumption of deep space probes?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What is the vis-viva equation and how does it help predict a spacecraft's velocity at any point along its orbital path?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "If you wanted to transfer a satellite from a 300 km low Earth orbit to a 36,000 km geostationary orbit, would a direct trajectory or a Hohmann transfer be more fuel-efficient, and why?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "How do spacecraft use gravity assists from celestial bodies to reduce fuel consumption on interplanetary missions?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
-{"query": "What are the key differences between a Hohmann transfer orbit and a bi-elliptic transfer in terms of fuel efficiency and transfer time?", "topic": "orbital_mechanics", "strategy": "ground_truth"}
+{"query": "What is the ideal carbon-to-nitrogen ratio for a compost pile?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How do I build a basic compost bin in my backyard?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Why does my compost smell like ammonia?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What's the difference between hot and cold composting methods?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How often should I turn my compost pile, and why?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Can I use finished compost directly on my vegetable garden, or does it need to cure further?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What are the main differences between traditional composting and vermicomposting?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How do I know if my compost has the right moisture level?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What should I do if my compost pile isn't breaking down quickly enough?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Which materials are considered \"greens\" and which are \"browns\" in composting?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What is vermicomposting and how does it differ from traditional pile composting in terms of space requirements?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How long does it typically take to produce finished compost using hot composting versus cold composting methods?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What causes a compost pile to become anaerobic, and how can I prevent this from happening?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Can I add meat, dairy, or oils to my compost pile, and if not, why are these materials problematic?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How do I transition from an active compost pile to using the finished product in my garden beds?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What temperature range indicates that my hot compost pile is working efficiently?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Why might my compost pile be attracting rodents or insects, and what can I do about it?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How do I set up and maintain a worm bin for vermicomposting in an apartment or small space?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What adjustments should I make to my composting method if I live in a very dry or very wet climate?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Is bokashi composting a viable alternative to traditional home composting, and what are its main advantages?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What materials should I add to my compost pile to maintain the proper balance between carbon and nitrogen?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How do I aerate my compost pile without turning it manually?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What is the minimum temperature my compost pile needs to reach to kill weed seeds and pathogens?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Can I compost grass clippings, and if so, how should I layer them to avoid creating a matted, slimy mess?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Why is my vermicompost bin producing a foul odor despite proper moisture levels?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What are the signs that my compost pile has enough aeration and is decomposing at an optimal rate?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How should I prepare my finished compost before applying it to different types of plants?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What is the difference between adding kitchen scraps to a worm bin versus a traditional outdoor compost pile?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How can I speed up the decomposition of stubborn materials like woody branches or cardboard in my compost system?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "If my compost pile feels soggy and is decomposing slowly, what specific steps should I take to fix the problem?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What materials should I avoid adding to my compost pile, and what happens if I accidentally include them?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How can I tell if my compost pile is getting enough air circulation, and what are the consequences of poor aeration?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What is the best way to layer browns and greens when building a new compost pile from scratch?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Why might my cold compost pile take much longer than expected to fully decompose?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How do I set up a vermicomposting system in my kitchen, and what are the space and maintenance requirements?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What adjustments should I make to my compost pile during extremely wet or dry weather conditions?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Can I add diseased plant material or weeds with seeds to my compost, and how does temperature affect whether these threats are neutralized?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What is the most effective way to introduce finished compost into different garden areas, such as container gardens versus in-ground beds?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "Why is my worm bin producing leachate, and should I be concerned about this liquid byproduct?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "How do I troubleshoot a compost pile that appears to have stopped decomposing entirely despite having the right materials and moisture level?", "topic": "composting", "strategy": "kb_blind"}
+{"query": "What is the difference between determinate and indeterminate tomato varieties?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How do I start tomato seedlings from seed indoors?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Why do my tomatoes have dark spots on the bottom of the fruit?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "When should I transplant seedlings into larger pots before moving them to the garden?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What is a tomato sucker and why should I prune them?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Should I use stakes or cages for my tomato plants, and what are the pros and cons of each?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How often should I water my tomato plants during the growing season?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What causes early blight on tomatoes and how can I prevent it?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How do I identify and control hornworms in my tomato garden?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "At what stage of ripeness should I harvest tomatoes for the best flavor and storage?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How much fertilizer do I need to apply to my tomato plants each month?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What are the best practices for hardening off tomato seedlings before transplanting them outdoors?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Can I prevent blossom end rot by adjusting my watering schedule, and what other factors contribute to this condition?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What is the difference between pruning suckers and removing lower leaves for disease prevention?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How do I know when a tomato plant has a disease versus a nutrient deficiency?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What should I do if I find hornworm eggs or small larvae on my tomato plants early in the season?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Why do some gardeners recommend removing flowers from tomato plants in early summer?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Can determinate tomatoes be grown successfully in containers, and do they still need support structures?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What are companion plants that help protect tomatoes from pests and diseases?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How can I ripen green tomatoes at the end of the season if frost is coming?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Can I use the same soil from last year's garden to start my tomato seedlings indoors?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What nutrient deficiencies cause yellowing leaves on tomato plants, and how do I correct them?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How does consistent versus inconsistent watering affect tomato plant health and fruit quality?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What is the best method for sterilizing tomato cages and stakes between growing seasons to prevent disease?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Which common tomato diseases are fungal versus bacterial, and do they require different treatment approaches?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "If I accidentally break the main stem of my indeterminate tomato plant, can it recover?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What are the signs that a hornworm infestation has begun, and what organic control methods work best?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How do I create a balanced fertilizer schedule that prevents both nutrient deficiency and over-fertilization?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Are there tomato varieties that are naturally resistant to early blight and other common diseases?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What happens to fruit quality if I harvest tomatoes at different stages of the pink or light red stage?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Can I save seeds from my homegrown tomatoes, and will they produce plants identical to the parent plant?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What causes flower drop on tomato plants, and how can I prevent my plants from losing their blooms before fruit sets?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How do I transition seedlings from an indoor grow light setup to outdoor garden conditions?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What are the signs of overwatering versus underwatering in tomato plants?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Is it necessary to remove the lower leaves of tomato plants as they grow, and when should I start doing this?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How do I construct an effective support system for indeterminate varieties that will last through the entire growing season?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What integrated pest management strategies can I use to control hornworms without using chemical pesticides?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "Can I grow determinate tomato varieties in the same garden bed year after year, or do I need to rotate crops?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What is the difference between early blight and late blight on tomatoes, and how are their treatments different?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "How do I know if my tomato plants need fertilizer, and what do nutrient deficiencies look like?", "topic": "tomato_growing", "strategy": "kb_blind"}
+{"query": "What is hydroponics?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How does the nutrient film technique differ from deep water culture?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "Why is pH management important in hydroponic systems?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What crops are best suited for hydroponic growing?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How do I mix nutrients for a hydroponic solution?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What causes electrical conductivity to change in a hydroponic reservoir?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "Can you explain how an ebb and flow system works?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What type of lighting is most suitable for indoor hydroponic gardens?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What are the advantages of using the Kratky method for beginners?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How do I troubleshoot nutrient deficiencies in my hydroponic plants?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What is the ideal EC range for growing lettuce hydroponically?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How often should I change the nutrient solution in a deep water culture system?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What is the relationship between water temperature and dissolved oxygen in hydroponic systems?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "Can I use tap water directly in my hydroponic reservoir, or do I need to treat it first?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "Why might my hydroponic plants show signs of stress even when pH and EC levels appear normal?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What equipment do I need to set up a basic ebb and flow system at home?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How does light intensity affect growth rates in hydroponic tomato production?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What are the main differences between using synthetic nutrients versus organic nutrient solutions in hydroponics?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "If my pH keeps dropping in my hydroponic system, what could be causing this problem?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "Which hydroponic system requires the least maintenance for a small-scale operation?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How do I adjust pH in a hydroponic system if it keeps rising above the target range?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What's the difference between EC and PPM, and how do they relate to nutrient concentration?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "Can I grow herbs and leafy greens together in the same Kratky system, or do they need separate setups?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "Why is dissolved oxygen important in deep water culture, and how can I increase it?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What happens if I mix incompatible nutrient brands in my hydroponic solution?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How long does it typically take to see growth results when switching from soil to a nutrient film technique system?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What are the main pros and cons of using LED grow lights versus fluorescent lights for hydroponics?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "If my ebb and flow system timer fails, what's the immediate impact on my plants?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How do I know if my hydroponic solution needs a complete water change versus just adding nutrients?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What role does water hardness play in hydroponic nutrient availability, and should I be concerned about it?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What is the main purpose of measuring electrical conductivity in a hydroponic system?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How do I know when to completely replace the water in my hydroponic reservoir versus just topping it up?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What happens if I don't provide adequate aeration in a deep water culture setup?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "Can I grow different plant species with different nutrient requirements in the same hydroponic system?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What is the difference between PPM and EC measurements, and which one should I prioritize?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "Why do some hydroponic growers prefer the nutrient film technique for commercial lettuce production?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "How does water temperature affect nutrient uptake and plant health in hydroponics?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What are the main reasons a Kratky system might not be suitable for long-term crop production?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "If I'm mixing my own hydroponic nutrient solution from individual components, what's the correct order to add them?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What impact does hard tap water have on pH stability and nutrient availability in hydroponic systems?", "topic": "hydroponics", "strategy": "kb_blind"}
+{"query": "What is mushroom spawn and what are the different types available?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How do oyster mushrooms compare to shiitake mushrooms in terms of difficulty for beginners?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "Why is pasteurization of straw substrate important before inoculating it with mushroom spawn?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What is the step-by-step process for inoculating a hardwood log with shiitake spawn?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What humidity level should I maintain for fruiting wine cap mushrooms indoors?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "Can I use wood chips instead of straw for growing oyster mushrooms, and what are the differences?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What causes contamination in mushroom growing, and how can I prevent it?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How do I know when oyster mushrooms are ready to harvest, and will they produce multiple flushes?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What is the difference between sterilization and pasteurization in the context of mushroom substrate preparation?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How long does it typically take from inoculation to first harvest with wine cap mushrooms on straw?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What temperature should I maintain during the colonization phase after inoculating my substrate?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How does the fruiting environment differ between growing mushrooms indoors versus outdoors on logs?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What are the signs that my mushroom substrate has become contaminated with mold or bacteria?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "Can I reuse wood chips from a previous mushroom flush for growing another batch?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "Why do some growers prefer spawn in grain form over liquid culture or sawdust spawn?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What is the ideal fruiting trigger for oyster mushrooms, and how do I initiate it in my growing setup?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How many flushes can I expect from a single inoculated log over its productive lifetime?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What equipment do I need to properly sterilize substrate using a pressure cooker versus other methods?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "Is it necessary to soak logs before inoculating them with spawn, and why or why not?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How can I tell the difference between a contaminated pin site and the beginning of healthy mushroom primordia formation?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What are wine cap mushrooms, and what makes them different from oyster and shiitake varieties?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How do I choose between grain spawn, sawdust spawn, and liquid culture for my first mushroom growing project?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What is the ideal temperature range during the colonization phase after inoculating my substrate?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "Can I reuse substrate or wood chips from a previous flush, and what precautions should I take?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What are the visible signs that indicate my mushroom substrate has been successfully colonized and is ready for fruiting?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "Why do some mushroom growers prefer soaking logs before inoculation, and is it absolutely necessary?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What is the difference between a contamination problem and the natural appearance of healthy mushroom pin formation?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How many times can a single log produce mushroom flushes before it becomes exhausted?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What environmental adjustments do I need to make when transitioning from the colonization phase to the fruiting phase?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "Is there a significant difference in yield or quality between mushrooms grown on straw versus those grown on logs?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "Is soaking logs before inoculation necessary, and what benefits does it provide?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What types of mushroom spawn should a beginner use, and which is easiest to work with?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How do I transition my substrate from the colonization phase to the fruiting phase?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What are the main differences between oyster, shiitake, and wine cap mushrooms in terms of growing difficulty?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What visible signs indicate that my substrate has been fully colonized and is ready to fruit?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How does growing mushrooms on logs outdoors differ from indoor cultivation on straw or wood chips?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How can I distinguish between contamination and the natural formation of healthy mushroom pins?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "What is the typical yield difference between growing mushrooms on straw versus on inoculated logs?", "topic": "mushroom_cultivation", "strategy": "kb_blind"}
+{"query": "How is Bitcoin classified for tax purposes?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What is the difference between long-term and short-term capital gains on cryptocurrency?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "Why does the IRS consider crypto staking rewards to be taxable income?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What are the different cost basis methods available for calculating cryptocurrency gains?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How do I report cryptocurrency transactions on my tax return?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "Does trading one cryptocurrency for another trigger a taxable event?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What records do I need to keep for cryptocurrency transactions?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "Can I claim a loss on cryptocurrency if the value drops?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How is mining income taxed differently from staking income?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What is the wash sale rule and does it apply to digital assets like Bitcoin?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "When do I need to report a cryptocurrency transaction as a taxable event?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What forms should I file if I received Bitcoin through mining in 2023?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How does the IRS determine which specific coins I sold when I don't track individual lots?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What is the difference between FIFO, LIFO, and specific identification cost basis methods?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "If I gift cryptocurrency to a family member, is that considered a taxable event?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How should I report staking rewards that I received but haven't sold yet?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What penalties might I face for not reporting cryptocurrency transactions on my taxes?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "Can I deduct trading fees and transaction costs from my cryptocurrency capital gains?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How do airdrops and token distributions affect my tax liability?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What documentation do tax authorities expect to see for large cryptocurrency transactions?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What happens to my tax liability if I receive free cryptocurrency through an airdrop?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "Can I deduct the fees I paid to a crypto exchange when calculating my capital gains or losses?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How should I handle the tax reporting if I convert my mining rewards into fiat currency months after earning them?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What is the difference between a taxable event and a non-taxable transfer in cryptocurrency transactions?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "If I lost access to my private keys and can't sell my Bitcoin, do I still have reporting obligations to the IRS?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How does the IRS track my cryptocurrency transactions if I use multiple exchanges and wallets?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What are the consequences of using the wrong cost basis method to calculate my crypto gains?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "Do I need to report each small transaction separately, or can I aggregate cryptocurrency trades for tax purposes?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How do I determine the fair market value of a token I received through staking when there's no clear market price?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What additional documentation should I prepare if the IRS audits my cryptocurrency transactions?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How do I determine the fair market value of cryptocurrency I received as staking rewards when prices fluctuate throughout the day?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What happens to my tax obligations if I transfer cryptocurrency between my own wallets on different exchanges?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "Can I use different cost basis methods for different batches of cryptocurrency, or must I choose one method for all transactions?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How should I report cryptocurrency losses if I'm not actively trading but holding long-term?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What is the difference between a fork and an airdrop in terms of tax treatment and reporting requirements?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "If I pay someone in Bitcoin for goods or services, what tax forms do both parties need to file?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How do I calculate my cost basis if I purchased cryptocurrency gradually over time and then sold it in one large transaction?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What documentation should I keep to defend my cryptocurrency tax reporting in case of an IRS inquiry?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "Are there any circumstances under which a cryptocurrency transaction would not be considered a taxable event?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "How does the timing of when I receive versus when I sell mining rewards affect my overall tax liability?", "topic": "cryptocurrency_taxation", "strategy": "kb_blind"}
+{"query": "What is escape velocity and how is it calculated?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "Why do geostationary satellites remain fixed above the same location on Earth?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How does a Hohmann transfer orbit work, and when is it used in spaceflight?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What are Kepler's three laws of planetary motion?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is the difference between orbital velocity and escape velocity?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How do gravity assists allow spacecraft to gain speed without using fuel?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What factors influence the delta-v budget needed for a space mission?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "Can a spacecraft change its orbital inclination, and why is this maneuver so costly in terms of fuel?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is a low Earth orbit, and what are its typical characteristics and uses?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What orbital altitude would a satellite need to maintain a geostationary orbit around Earth?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How does the vis-viva equation relate to orbital velocity at different points in an elliptical orbit?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "Why is it generally more efficient to use a Hohmann transfer than a direct trajectory when moving between two circular orbits?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is orbital inclination and how does it affect a satellite's ground track?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "Can you explain the relationship between orbital period and orbital radius according to Kepler's third law?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How would you calculate the total delta-v required for a mission that includes a launch to low Earth orbit followed by a trans-lunar injection?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What advantages and disadvantages do low Earth orbits have compared to geostationary orbits for different applications?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How does the Moon's gravity assist a spacecraft traveling from Earth to the outer planets?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is the minimum velocity needed to maintain a stable circular orbit at a given altitude?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "Why does changing a satellite's orbital inclination require significantly more fuel than raising or lowering its altitude?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What determines whether a spacecraft will remain in a stable orbit or fall back to Earth?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How do mission planners calculate the total delta-v budget for a multi-stage space mission?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is the relationship between orbital altitude and orbital period for any celestial body?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "Why does a spacecraft need less delta-v to lower its orbit than to raise it?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is meant by \"orbital inclination\" and how does it constrain which targets a satellite can reach?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How would you use a gravity assist to reduce the fuel requirements for an interplanetary mission?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is the minimum and maximum orbital velocity possible for a stable circular orbit around Earth?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What are the practical advantages of launching spacecraft into low Earth orbit before conducting further maneuvers to other destinations?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is the relationship between an object's distance from a central body and the time it takes to complete one orbital revolution?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How do mission planners use delta-v budgets to determine whether a proposed space mission is feasible with available propellant?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is orbital velocity and how does it change as a spacecraft moves through different points in an elliptical orbit?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "Why is launching to low Earth orbit first, rather than directly to geostationary orbit, a more practical approach for most space missions?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "Can you explain what orbital inclination is and why certain launch sites are better suited for reaching specific orbital inclinations?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How would a spacecraft execute a plane change to shift from one orbital inclination to another, and what makes this maneuver particularly expensive?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What determines the altitude at which a geostationary satellite must orbit, and how does this compare to the altitude of a typical low Earth orbit?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How do mission designers use gravity assists from planets to reduce the fuel consumption of deep space probes?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What is the vis-viva equation and how does it help predict a spacecraft's velocity at any point along its orbital path?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "If you wanted to transfer a satellite from a 300 km low Earth orbit to a 36,000 km geostationary orbit, would a direct trajectory or a Hohmann transfer be more fuel-efficient, and why?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "How do spacecraft use gravity assists from celestial bodies to reduce fuel consumption on interplanetary missions?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
+{"query": "What are the key differences between a Hohmann transfer orbit and a bi-elliptic transfer in terms of fuel efficiency and transfer time?", "topic": "orbital_mechanics", "strategy": "kb_blind"}
