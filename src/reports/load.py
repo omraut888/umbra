@@ -42,6 +42,12 @@ def _float(x: str) -> Optional[float]:
     return float(x) if x not in ("", None) else None
 
 
+def _mix(mix: Dict[str, int]) -> Dict[str, int]:
+    if "ground_truth" in mix:
+        mix["kb_blind"] = mix.get("kb_blind", 0) + mix.pop("ground_truth")
+    return mix
+
+
 def load_audit(probes_csv: str | Path, kb_chunks: List[Chunk]) -> LoadedAudit:
     probes_csv = Path(probes_csv)
     rows = list(csv.DictReader(open(probes_csv, newline="", encoding="utf-8")))
@@ -78,7 +84,9 @@ def load_audit(probes_csv: str | Path, kb_chunks: List[Chunk]) -> LoadedAudit:
                 score=float(r["coverage_score"]), rc=float(r["rc_score"]), se=float(r["se_score"]),
                 hp=_float(r["hp_score"]), preliminary=float(r["preliminary_score"]),
             )
-        o = ProbeOutcome(uuid.UUID(r["probe_id"]), Probe(r["query"], r["generation_strategy"], r["probe_topic"] or None),
+        # runs from before kb_blind was a strategy tagged those probes "ground_truth"
+        strategy = "kb_blind" if r["generation_strategy"] == "ground_truth" else r["generation_strategy"]
+        o = ProbeOutcome(uuid.UUID(r["probe_id"]), Probe(r["query"], strategy, r["probe_topic"] or None),
                          response, score, emb_of.get(r["probe_id"]))
         o.cluster_id = int(r["cluster_id"]) if r.get("cluster_id") not in ("", None) else None
         o.umap_x, o.umap_y = _float(r.get("umap_x", "")), _float(r.get("umap_y", ""))
@@ -99,6 +107,6 @@ def load_audit(probes_csv: str | Path, kb_chunks: List[Chunk]) -> LoadedAudit:
             centroid_emb=np.mean([o.query_embedding for o in members], axis=0),
             centroid_x=float(np.mean(xs)) if xs else 0.0, centroid_y=float(np.mean(ys)) if ys else 0.0,
             representative_queries=json.loads(c["representative_queries"]), name=c["name"] or None,
-            strategy_mix=json.loads(c["strategy_mix"]), purity=_float(c.get("purity", "")),
+            strategy_mix=_mix(json.loads(c["strategy_mix"])), purity=_float(c.get("purity", "")),
         ))
     return LoadedAudit(outcomes, clusters, probes_csv)
