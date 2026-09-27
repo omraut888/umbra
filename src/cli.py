@@ -10,7 +10,7 @@ import json
 import logging
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import click
 from dotenv import load_dotenv
@@ -81,6 +81,8 @@ def cli(verbose: bool) -> None:
 @click.option("--min-cluster-size", default=20, show_default=True)
 @click.option("--zone-thresholds", default=f"{DEFAULT_THRESHOLDS.dark_below},{DEFAULT_THRESHOLDS.adequate_above}",
               show_default=True, help="dark_below,adequate_above for cluster zones.")
+@click.option("--zone-thresholds-file", type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              help="Thresholds written by `umbra benchmark calibrate --write-thresholds`.")
 @click.option("--payload", default="{}", help="Extra JSON merged into each request body, e.g. '{\"top_k\": 5}'.")
 @click.option("--auth-header", envvar="RAG_AUTH_HEADER", help="Authorization header value for the endpoint.")
 @click.option("--concurrency", default=50, show_default=True, help="Concurrent RAG queries.")
@@ -88,8 +90,8 @@ def cli(verbose: bool) -> None:
 @click.option("--db-dsn", envvar="POSTGRES_DSN", help="Postgres DSN; results are stored when set. [env: POSTGRES_DSN]")
 @click.option("--no-db", is_flag=True, help="Skip Postgres even if POSTGRES_DSN is set.")
 def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, kb_blind_per_topic, probes_file,
-          weights, hp_band, se_method, cluster, min_cluster_size, zone_thresholds, payload, auth_header, concurrency,
-          model, db_dsn, no_db) -> None:
+          weights, hp_band, se_method, cluster, min_cluster_size, zone_thresholds, zone_thresholds_file, payload,
+          auth_header, concurrency, model, db_dsn, no_db) -> None:
     """Probe a RAG system, score coverage per probe, and cluster the results into zones."""
     from src.audit import (
         cluster_outcomes, overall_score, persist, run_probes, write_cluster_csv, write_csv, write_responses,
@@ -105,8 +107,8 @@ def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, 
     try:
         config = ScorerConfig(weights=ScoringWeights.parse(weights), hp_band=_parse_band(hp_band), se_method=se_method)
         extra_payload = json.loads(payload)
-        thresholds = ZoneThresholds.parse(zone_thresholds)
-    except (ValueError, json.JSONDecodeError) as exc:
+        thresholds, _ = _thresholds(zone_thresholds, zone_thresholds_file)
+    except (ValueError, json.JSONDecodeError, KeyError) as exc:
         raise click.BadParameter(str(exc)) from exc
     chosen = [] if strategies.strip() == "none" else [s.strip() for s in strategies.split(",") if s.strip()]
     if not chosen and not probes_file:
@@ -201,9 +203,12 @@ def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, 
               help="Besides every DARK and THIN cluster, recommend for the k most severe clusters of any tier.")
 @click.option("--zone-thresholds", default=f"{DEFAULT_THRESHOLDS.dark_below},{DEFAULT_THRESHOLDS.adequate_above}",
               show_default=True)
+@click.option("--zone-thresholds-file", type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              help="Thresholds written by `umbra benchmark calibrate --write-thresholds` (overrides --zone-thresholds).")
 @click.option("--dashboard-uri", help="Where the coverage map will be served, stored as coverage_map_uri.")
 @click.option("--model", default=CLAUDE_MODEL, show_default=True)
-def report(audit_csv, kb_path, output, web_search, top_k, zone_thresholds, dashboard_uri, model) -> None:
+def report(audit_csv, kb_path, output, web_search, top_k, zone_thresholds, zone_thresholds_file, dashboard_uri,
+           model) -> None:
     """Build a GapReport (zones, severity ranking, recommendations) from an audit."""
     from src.data.kb_loader import kb_fingerprint, load_chunks, load_documents
     from src.probe_generation.taxonomy import anthropic_completer
@@ -211,13 +216,12 @@ def report(audit_csv, kb_path, output, web_search, top_k, zone_thresholds, dashb
     from src.reports.load import load_audit
     from src.reports.search import make_provider
 
-    thresholds = ZoneThresholds.parse(zone_thresholds)
+    thresholds, source = _thresholds(zone_thresholds, zone_thresholds_file)
     chunks = load_chunks(kb_path)
     loaded = load_audit(audit_csv, chunks)
     complete = search = None
     if web_search != "none":
         complete, search = anthropic_completer(model=model), make_provider(web_search)
-    source = "calibrated default" if thresholds == DEFAULT_THRESHOLDS else "--zone-thresholds"
     gap_report = asyncio.run(build_report(
         loaded.outcomes, loaded.clusters, chunks, kb_fingerprint=kb_fingerprint(load_documents(kb_path)),
         thresholds=thresholds, thresholds_source=source, complete=complete, search=search, top_k=top_k,
@@ -247,6 +251,62 @@ def dashboard(report_path, audit_csv, port) -> None:
     from src.dashboard.app import main
 
     main(str(report_path), str(audit_csv) if audit_csv else None, port=port)
+
+
+@cli.group()
+def benchmark() -> None:
+    """Gap-injection benchmark: known gaps in, calibrated thresholds out."""
+
+
+@benchmark.command("run")
+@click.option("--seeds", default="0,1,2,3,4", show_default=True, help="Comma-separated seeds.")
+@click.option("--out", "out_dir", default="out/benchmark", show_default=True, type=click.Path(path_type=Path))
+@click.option("--n-probes", default=600, show_default=True, help="Probes for the three KB-anchored strategies.")
+@click.option("--per-topic", default=30, show_default=True, help="kb_blind probes per topic.")
+@click.option("--n-absent", default=4, show_default=True, help="Topics removed entirely per seed.")
+@click.option("--n-thin", default=3, show_default=True, help="Topics cut down to a buried passage per seed.")
+@click.option("--force", is_flag=True, help="Redo seeds that already have results.")
+def benchmark_run(seeds, out_dir, n_probes, per_topic, n_absent, n_thin, force) -> None:
+    """Run seeds (skipping finished ones unless --force)."""
+    from src.benchmark.gap_injection import BenchmarkConfig, run_benchmark
+
+    config = BenchmarkConfig(n_probes=n_probes, per_topic=per_topic, n_absent=n_absent, n_thin=n_thin)
+    asyncio.run(run_benchmark([int(x) for x in seeds.split(",")], out_dir, config, force, echo=click.echo))
+
+
+@benchmark.command("calibrate")
+@click.option("--out", "out_dir", default="out/benchmark", show_default=True,
+              type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("--write-thresholds", type=click.Path(dir_okay=False, path_type=Path),
+              help="Write the fitted thresholds as JSON, for --zone-thresholds-file.")
+def benchmark_calibrate(out_dir, write_thresholds) -> None:
+    """Fit zone thresholds on every finished seed and compare with the spec's."""
+    from src.benchmark.calibrate import calibrate, print_summary
+
+    print_summary(calibrate(out_dir, write_thresholds))
+    if write_thresholds:
+        click.echo(f"\nWrote {write_thresholds}")
+
+
+@benchmark.command("ablate")
+@click.option("--out", "out_dir", default="out/benchmark", show_default=True,
+              type=click.Path(exists=True, file_okay=False, path_type=Path))
+def benchmark_ablate(out_dir) -> None:
+    """Re-cluster finished seeds with strategy subsets (no new LLM calls)."""
+    import sys
+
+    from src.benchmark import ablation
+
+    sys.argv = ["ablation", str(out_dir)]
+    ablation.main()
+
+
+def _thresholds(spec: str, path: Optional[Path]) -> Tuple[ZoneThresholds, str]:
+    if path:
+        data = json.loads(path.read_text())
+        return ZoneThresholds(data["dark_below"], data["adequate_above"]), f"{path} ({data.get('fit_on', 'file')})"
+    th = ZoneThresholds.parse(spec)
+    return th, "calibrated default" if th == DEFAULT_THRESHOLDS else "--zone-thresholds"
 
 
 def _echo_group_means(label: str, pairs) -> None:
