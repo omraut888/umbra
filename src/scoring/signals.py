@@ -17,8 +17,10 @@ from scipy.stats import entropy
 
 from src.embeddings import MODEL_LOCK, embed, get_cross_encoder
 
-SE_METHODS = ("spec", "dispersion")
-DEFAULT_SE_METHOD = "spec"
+# "dispersion" is the default: see docs/findings.md for why the spec's
+# histogram-entropy formula ("spec") gets uniformly irrelevant retrievals wrong.
+SE_METHODS = ("dispersion", "spec")
+DEFAULT_SE_METHOD = "dispersion"
 
 SE_BINS = 10
 # The spec calls np.histogram without a range, so bins span the data's own
