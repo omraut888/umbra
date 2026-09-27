@@ -182,11 +182,8 @@ distance around 0.45–0.55. So a perfect probe scores roughly
 quickly.
 
 The ranking is right. The absolute thresholds were set without a particular
-embedding model in mind. I've left the spec's 0.30 / 0.60 in place for now.
-The better fix is probably to calibrate the thresholds per embedding model
-(e.g. from the RC distribution on known-good pairs) rather than hard-code them.
-I'd do that against the gap-injection benchmark in the spec's section 10 rather
-than tuning them on this one KB.
+embedding model in mind. They've since been re-fit on the gap-injection
+benchmark; see section 4.
 
 ## 3. None of the KB-derived probe strategies can find a topic the KB never mentions
 
@@ -238,12 +235,191 @@ in mind for the per-strategy ablation.
 Two smaller things from the same run:
 
 - Clusters from the full-coverage topics sit at 0.58–0.68, mostly just under
-  the 0.60 adequate line. That's the ceiling effect from finding 2. By
+  the spec's 0.60 adequate line. That's the ceiling effect from finding 2,
+  and it's what section 4 fixes. By
   severity the tiers still come out in the right order: absent (2.74, 2.62),
   then thin (2.28, 2.25), then everything built on the full topics (1.10–1.80).
 - The adversarial topic parser accepted markdown headings ("# Boundary Topics")
   as topic names, which accounted for 9 of the 1218 probes. Fixed after this
   run.
+
+## 4. Zone thresholds, re-fit on the gap-injection benchmark
+
+The spec's 0.30 / 0.60 cutoffs don't fit this scorer (section 2), so I fit new
+ones on known gaps instead of picking new round numbers.
+
+### The benchmark
+
+`src/benchmark/gap_injection.py` follows the spec's section 10 method with one
+addition. Each seed splits the 14 in-domain topics of the synthetic KB
+(composting, tomatoes, and the 12 background topics) into:
+
+- **absent** (4 topics): every document removed
+- **thin** (3 topics): every document removed except a two-sentence passage,
+  buried in a document about another topic. This is the same construction the
+  builder uses for hydroponics and mushrooms. The spec's benchmark has no thin
+  tier, but without one there's nothing to calibrate the upper threshold on.
+- **present** (7 topics): untouched
+
+The full audit then runs against a mock RAG server built on the reduced KB,
+using all four probe strategies (600 KB-anchored probes plus 30 kb_blind
+probes per topic, ~1000 after dedup). The steps are scoring, then UMAP +
+HDBSCAN. A cluster gets a ground-truth tier when at least 5 of its probes are
+kb_blind probes and at least 60% of those are about one topic. kb_blind probes
+are the only ones that carry a topic label.
+
+I planned 5 seeds. The API credit ran out partway through seed 3, so the
+numbers below are from seeds 0–2: 63 clusters, 46 of them labeled (9 absent,
+9 thin, 28 present). Seeds 3 and 4 should be rerun before these thresholds are
+treated as final.
+
+### What the scores look like
+
+| true tier | clusters | mean | p10 | p90 | range |
+|---|---|---|---|---|---|
+| absent | 9 | 0.336 | 0.297 | 0.358 | 0.297–0.482 |
+| thin | 9 | 0.348 | 0.304 | 0.382 | 0.304–0.393 |
+| present | 28 | 0.516 | 0.420 | 0.598 | 0.375–0.649 |
+
+The same picture holds without clustering. Using the mean score of each
+topic's kb_blind probes, absent topics average 0.322, thin 0.341, and present
+0.492.
+
+Present separates cleanly from the other two. Absent and thin mostly don't.
+Once a topic's documents are gone, the questions about it retrieve whatever
+gardening text is left, and a two-sentence mention barely moves that. Part of
+the reason is that "absent" in this benchmark means *the topic's own documents
+are removed*, not that nothing related remains. When seed 0 removed
+seed_starting, the tomato seed-starting document was still there, and that
+cluster scored 0.482. The off-domain topics from section 1 (crypto taxes at
+0.231, orbital mechanics at 0.251) sit well below every in-domain absent
+cluster.
+
+### Fitting
+
+Each threshold is placed where it best separates two groups by F1. When
+several cut points tie, the middle one is used, so the line sits in the gap
+rather than against one class.
+
+- `dark_below`: absent vs thin + present → **0.324**
+- `adequate_above`: present vs absent + thin → **0.400**
+
+| thresholds | 3-tier accuracy | dark P / R / F1 | adequate P / R / F1 | spec §10 precision / recall / FPR (mean over seeds) |
+|---|---|---|---|---|
+| spec 0.30 / 0.60 | 28% | 1.00 / 0.11 / 0.20 | 1.00 / 0.11 / 0.19 | 0.33 / 0.08 / 0.00 |
+| calibrated 0.324 / 0.400 | 89% | 0.78 / 0.78 / 0.78 | 0.96 / 0.96 / 0.96 | 0.78 / 0.58 / 0.00 |
+
+Under the spec thresholds, 25 of 28 present clusters and 8 of 9 absent ones
+both come out THIN. The spec cutoffs mostly just call everything thin.
+
+89% is in-sample. Leave-one-seed-out (fit on two seeds, score the third) gives
+**73%, 89%, and 85%** on the held-out seeds, against 27%, 33%, and 23% for the
+spec thresholds. The fitted values move from seed to seed: dark_below is
+0.322–0.364, adequate_above 0.372–0.400. With three seeds that spread is the
+honest error bar.
+
+The spec §10 recall of 0.58 has two sources. Three of the 12 absent topics
+never formed a labeled cluster (their probes scattered into mixed clusters or
+noise), and two absent clusters scored above the dark line (the seed_starting
+case above, and one at 0.358).
+
+### Before vs after on the full synthetic KB
+
+The Phase 2 run from section 3, re-zoned (cluster means don't depend on the
+thresholds):
+
+| ground-truth topic | true tier | cluster mean | spec zone | calibrated zone |
+|---|---|---|---|---|
+| composting (19 probes in cluster 0) | full | 0.579 | THIN | ADEQUATE |
+| tomato_growing (spread; largest group in noise) | full | 0.432–0.678 | THIN | ADEQUATE (all 40 probes) |
+| mushroom_cultivation | thin | 0.335 | THIN | THIN |
+| hydroponics | thin | 0.311 | THIN | **DARK** |
+| cryptocurrency_taxation | absent | 0.231 | DARK | DARK |
+| orbital_mechanics | absent | 0.251 | DARK | DARK |
+
+The full topics are now right and the absent ones stay right. Hydroponics
+drops to DARK, which is the thin/absent overlap above showing up on real
+data. At 0.311 it's closer to the in-domain absent clusters than to anything
+present.
+
+### The tradeoff this makes
+
+The calibrated THIN band is 0.324–0.400, much narrower than the spec's
+0.30–0.60. On the full KB, 23 of 26 clusters are now ADEQUATE, including
+clusters built mostly from adversarial probes, like "Vegetable Garden Pest
+Control" (0.444) and "Fungal Disease Prevention" (0.432). Those were THIN
+before, and they are real depth gaps inside covered topics.
+
+That follows from what the benchmark labels. "Present" means the topic has
+its documents, and a present cluster still includes plenty of questions the
+documents don't answer (section 2). So the adequate line is calibrated to
+"is this topic in the KB", not "can the KB answer questions about it in
+depth". If Phase 3 recommendations should target depth gaps, the upper
+threshold needs a different ground truth, e.g. clusters labeled by the share
+of probes the cross-encoder says are answered.
+
+Current defaults: `ZoneThresholds(0.324, 0.400)` in `src/clustering/zones.py`,
+overridable with `umbra audit --zone-thresholds`. `SPEC_THRESHOLDS` stays
+available for comparison. The fitted values depend on the embedding model
+(MiniLM), the SE method (dispersion), and the probe mix, so all three should
+be re-fit if any of them changes.
+
+## 5. KB-anchored strategies structurally cannot detect absolute gaps
+
+Taxonomy, adversarial, and counterfactual generation all derive probes from
+KB content: its topics, its neighborhood, its chunks. A topic with no
+documents leaves nothing for them to start from. Only generation that never
+looks at the KB, and works from a description of what the KB *should* cover,
+can reliably ask about a topic that's missing. The spec's claim that
+taxonomy-guided generation finds "absolute gaps: topics with zero coverage"
+is wrong.
+
+That's now a real strategy, `kb_blind` (`src/probe_generation/kb_blind.py`),
+selectable in the audit:
+
+```
+umbra audit ... --strategies taxonomy,adversarial,counterfactual,kb_blind --topics-file topics.json
+umbra audit ... --strategies ...,kb_blind --domain "home food gardening: growing vegetables, fruit and herbs"
+```
+
+With `--topics-file`, it asks about each listed topic. With `--domain`, Haiku
+first expands the description into topics, still without seeing the KB. It's
+sized per topic (default 30), not as a share of `--n-probes`. A topic needs at
+least min_cluster_size (20) probes to come out as its own cluster.
+
+### Confirmed on the benchmark
+
+`src/benchmark/ablation.py` re-clusters each benchmark seed's already-scored
+probes using only some strategies. Each probe is attributed to a topic through
+the full-run cluster it sat in. For the 12 injected absent topics across seeds
+0–2:
+
+| strategies in the probe set | absent topics surfaced as their own cluster | ...and DARK |
+|---|---|---|
+| all four | 9 / 12 | 7 / 12 |
+| taxonomy + adversarial + counterfactual | **0 / 12** | **0 / 12** |
+| adversarial only | 0 / 12 | 0 / 12 |
+| kb_blind only | 2 / 12 | 2 / 12 |
+
+Without kb_blind, not one injected gap surfaced, even though these are
+in-domain gaps adjacent to what's left in the KB, the case where the
+KB-anchored strategies have the best chance. On the full synthetic KB
+(section 3), the off-domain gaps got zero probes from those strategies at all.
+
+Two details from the same data:
+
+- **The KB-anchored probes still matter.** Of the 386 probes in absent-labeled
+  clusters, 241 are kb_blind, 107 adversarial, 26 counterfactual, and 12
+  taxonomy. Adversarial probes do wander into the gap's neighborhood, just
+  never enough on their own to form a cluster. kb_blind alone surfaced only
+  2 of 12: 420 probes on their own cluster coarsely (8 clusters for 14 topics
+  in seed 0), and missing topics get merged into mixed clusters. The
+  combination is what works.
+- **The scope is whatever you give it.** kb_blind finds gaps inside the topic
+  list or domain description it's handed. A gardening description won't
+  produce a question about crypto taxes. Section 3 only caught those because
+  the topic list included them. Gaps nobody anticipated still need real user
+  queries (the spec's user-pattern strategy).
 
 ### Reproducing
 
@@ -266,6 +442,11 @@ python scripts/validate_phase1.py report \
 umbra audit --endpoint http://localhost:8765/query --kb-path data/synthetic_kb --n-probes 1000 \
     --probes-file data/validation/validation_probes.jsonl --output out/phase2.csv
 python scripts/validate_phase2.py out/phase2.csv
+
+# findings 4 and 5
+python -m src.benchmark.gap_injection --seeds 0 1 2 3 4 --out out/benchmark
+python -m src.benchmark.calibrate out/benchmark
+python -m src.benchmark.ablation out/benchmark
 ```
 
 Probe generation goes through an LLM, so reruns won't reproduce these numbers
