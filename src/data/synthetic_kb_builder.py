@@ -107,6 +107,23 @@ EVALUATED_TOPICS: Dict[str, Dict[str, str]] = {
     },
 }
 
+# Descriptions for the background topics. The KB-blind probe strategy and the
+# gap-injection benchmark generate questions from these, never from the docs.
+BACKGROUND_DESCRIPTIONS: Dict[str, str] = {
+    "soil": "Garden soil: soil testing, pH and how to adjust it with lime or sulfur, soil texture, and improving clay or sandy soil.",
+    "irrigation": "Watering a vegetable garden: how much and when to water, drip irrigation systems, emitters and timers.",
+    "raised_beds": "Raised garden beds: building them, dimensions and materials, filling soil mixes, and square foot or intensive spacing.",
+    "pest_management": "Garden pest control: integrated pest management, beneficial insects, slugs and snails, and keeping out rabbits, deer and birds.",
+    "seed_starting": "Starting vegetable seeds: indoor seed starting under lights, containers and mixes, germination temperature, and direct sowing outdoors.",
+    "mulch": "Garden mulch: types of mulch such as straw, shredded leaves and wood chips, how and when to apply it, and its effects on soil.",
+    "fruit_trees": "Home fruit trees: pruning apple, pear and peach trees, training systems, thinning fruit, and pollination requirements.",
+    "herbs": "Growing culinary herbs such as basil, rosemary, thyme, mint and cilantro, and harvesting, drying and preserving them.",
+    "garden_planning": "Vegetable garden planning: crop rotation by plant family, succession planting, planting calendars and garden records.",
+    "cover_crops": "Cover crops and green manure: legumes, cereal rye and oats, nitrogen fixation, when to sow them and how to terminate them.",
+    "season_extension": "Extending the growing season with row covers, low tunnels, cold frames, hoop houses and unheated greenhouses.",
+    "tools": "Garden tools: choosing basic hand tools and pruners, cleaning, sharpening, disinfecting and maintaining them.",
+}
+
 # Terms that must not appear in the KB except in the designated thin passages.
 # Absent-topic terms must never appear at all.
 LEAKAGE_TERMS: Dict[str, List[str]] = {
@@ -549,10 +566,11 @@ def build_ground_truth(docs: List[Document]) -> dict:
             entry["passage"] = THIN_PASSAGES[name]
         topics[name] = entry
 
-    background: Dict[str, List[str]] = {}
+    background: Dict[str, dict] = {}
     for d in docs:
         if d.topic not in EVALUATED_TOPICS:
-            background.setdefault(d.topic, []).append(d.doc_id)
+            entry = background.setdefault(d.topic, {"description": BACKGROUND_DESCRIPTIONS[d.topic], "documents": []})
+            entry["documents"].append(d.doc_id)
 
     return {
         "domain": "home food gardening",
@@ -590,7 +608,7 @@ def main() -> None:
     for name, t in gt["topics"].items():
         print(f"  {name:<26} {t['tier']:<7} {len(t['documents'])} doc(s)")
     print(f"  + {len(gt['background_topics'])} background topics, "
-          f"{sum(len(v) for v in gt['background_topics'].values())} docs")
+          f"{sum(len(v['documents']) for v in gt['background_topics'].values())} docs")
 
 
 if __name__ == "__main__":
