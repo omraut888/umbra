@@ -365,14 +365,51 @@ same way for every cluster, `(1 − mean_cs) · log(1 + size) · (1 − std_cs)`
 it keeps ranking low-scoring, consistent clusters even after they're called
 adequate. Among the ADEQUATE clusters on the full KB, Pest Control (1.87) and
 Fungal Disease (1.67) rank above well-covered ones like the C:N-ratio cluster
-(1.14) and tomato ripening (1.10). One caveat: severity grows with cluster
-size, so a large, reasonably covered cluster can outrank a small depth gap
-(compost pile temperature, 134 probes at 0.579, scores 1.80).
+(1.14) and tomato ripening (1.10). Severity originally grew with cluster size without limit, so a large,
+reasonably covered cluster could outrank a small depth gap: compost pile
+temperature (134 probes, 0.579) scored 1.80. The size term is now capped;
+section 6 has the before and after.
 
 **For Phase 3:** the report must keep severity-sorted output visible for
 ADEQUATE clusters too, not just list DARK and THIN zones. A report filtered to
 non-adequate tiers would hide exactly the depth gaps that adversarial probing
 is good at finding.
+
+### Negative result: cluster purity doesn't break the DARK/THIN tie
+
+Since score alone barely separates absent from thin, I tried cluster purity as
+a second signal. Purity is the share of a cluster's probes traceable to its
+most common true topic. In the tested rule, the score still decides ADEQUATE
+vs not, and inside not-adequate, purity alone decides DARK vs THIN. The purity
+cutoff and which side of it counts as DARK were both fit on the benchmark, the
+same way as the score thresholds. Two versions:
+
+- **ground-truth purity**: kb_blind probes carry their topic, and
+  counterfactual probes trace to one through their source chunk's document.
+  This can't be computed in a real audit (there's no ground truth), so it's
+  an upper bound for what purity could do.
+- **kb_blind purity**: only the kb_blind topic labels, which a real audit has
+  whenever kb_blind runs.
+
+On seeds 0–2 (9 absent, 9 thin, 28 present labeled clusters):
+
+| DARK vs THIN decided by | rule | dark P / R / F1 | thin P / R / F1 | 3-tier acc | held-out dark F1 | held-out acc |
+|---|---|---|---|---|---|---|
+| score (dark_below 0.324) | — | 0.78 / 0.78 / 0.78 | 0.78 / 0.78 / 0.78 | 89% | **0.71** | **82%** |
+| ground-truth purity | dark if ≥ 0.627 | 0.75 / 0.67 / 0.71 | 0.70 / 0.78 / 0.74 | 87% | 0.61 | 80% |
+| kb_blind purity | dark if ≥ 0.627 | 0.75 / 0.67 / 0.71 | 0.70 / 0.78 / 0.74 | 87% | 0.61 | 80% |
+
+Score alone beats purity, in-sample and held-out. The reason is visible in the
+raw values: absent clusters average 0.60 purity and thin clusters 0.62, with
+almost the same spread (p10–p90 of 0.30–0.71 vs 0.45–0.78). A missing topic's
+questions cluster together just as tightly as a barely-covered topic's
+questions do. The two purity versions come out identical because the few
+counterfactual probes in these clusters trace to *other* topics, so they never
+change the most common label.
+
+The purity rule stays available (`PurityRule` in `src/clustering/zones.py`,
+and every cluster now reports its kb_blind purity), but it's not the default.
+If seeds 3–4 change this materially, it'll be noted here.
 
 Current defaults: `ZoneThresholds(0.324, 0.400)` in `src/clustering/zones.py`,
 overridable with `umbra audit --zone-thresholds`. `SPEC_THRESHOLDS` stays
@@ -436,6 +473,85 @@ Two details from the same data:
   produce a question about crypto taxes. Section 3 only caught those because
   the topic list included them. Gaps nobody anticipated still need real user
   queries (the spec's user-pattern strategy).
+
+## 6. Capping the size term in severity
+
+The spec's severity is `(1 − mean_cs) · log(1 + size) · (1 − std_cs)`. The
+log term was meant to rank a big consistent failure above a tiny one, and it
+does. But it also let a large, mostly-covered cluster outrank small, real
+depth gaps. On the full synthetic KB, "Compost Pile Temperature Management"
+(134 probes, mean 0.579) scored 1.80, above "Fungal Disease Prevention" (28
+probes, mean 0.432, 1.67), and was within 0.07 of "Vegetable Garden Pest
+Control" (47 probes, 1.87). A top-N list built on that would put a
+well-covered topic next to, or ahead of, the gaps it's supposed to surface.
+
+Pest Control and Fungal Disease have ground truth as depth gaps: the pest and
+disease documents exist, and the questions in these clusters go beyond them.
+The data backs this up. The cross-encoder finds no answer for 62% and 61% of
+their probes, against 41% for compost pile temperature and 6–38% for the
+other compost and tomato clusters. (A probe counts as unanswered when HP ≥
+0.5, or when HP wasn't computed and the preliminary score was under the band.)
+
+The size term is now `log(1 + min(size, 50))`. 50 is 2.5× min_cluster_size,
+and capping there bounds the size effect: the largest possible cluster gets
+at most log(51)/log(21) ≈ 1.29× the weight of the smallest one. To outrank a
+smaller cluster on size alone, a cluster has to be within 29% of it on
+`(1 − mean) · (1 − std)`. The spec's own example still holds (500 probes at
+0.1 score 3.54, 10 probes at 0.05 score 2.28).
+
+I picked the cap on that bound rather than tuning it to these two clusters.
+Here are the alternatives I checked. "Depth gaps first" means both Pest
+Control and Fungal Disease rank above every compost and tomato cluster.
+"Rank correlation" is between severity and the unanswered share, over the 26
+non-noise clusters. The benchmark AUC is the probability that a random absent
+cluster outranks a random present one, over seeds 0–2.
+
+| size term | depth gaps first | rank correlation with unanswered share | benchmark AUC, absent over present |
+|---|---|---|---|
+| log(1 + n), spec | no | 0.863 | 0.988 |
+| log(1 + min(n, 100)) | no | 0.863 | 0.988 |
+| **log(1 + min(n, 50))** | **yes** | **0.902** | **0.968** |
+| log(1 + min(n, 40)) | yes | 0.921 | 0.964 |
+| sqrt(log(1 + n)) | yes | 0.920 | 0.980 |
+| no size term | yes | 0.907 | 0.952 |
+
+A cap at 100 changes nothing on this KB, because only two clusters are
+bigger than that. Any cap at 50 or below, or the square-root compression,
+fixes the ordering and tracks the unanswered share better than the spec
+formula. The cost is a slightly lower benchmark AUC (0.988 → 0.968): some
+large absent clusters lose a little of their lead. The square root keeps more
+of that AUC, but its size effect is unbounded. With a cap, a 5,000-probe
+cluster can't dominate the list.
+
+Before and after, on the full synthetic KB (zones use the calibrated
+thresholds):
+
+| cluster | size | mean | zone | unanswered | severity before (rank) | severity after (rank) |
+|---|---|---|---|---|---|---|
+| Cryptocurrency Tax Reporting Requirements | 40 | 0.231 | DARK | 100% | 2.74 (1) | 2.74 (1) |
+| Orbital Mechanics and Parameters | 39 | 0.251 | DARK | 100% | 2.62 (2) | 2.62 (2) |
+| Mushroom Cultivation Methods and Environments | 39 | 0.335 | THIN | 95% | 2.28 (4) | 2.28 (3) |
+| Water Quality and Nutrient Management | 28 | 0.311 | DARK | 100% | 2.25 (5) | 2.25 (4) |
+| Pruning Perennial Herbs Safely | 66 | 0.452 | ADEQUATE | 53% | 2.01 (6) | 1.88 (5) |
+| **Vegetable Garden Pest Control** | 47 | 0.444 | ADEQUATE | 62% | 1.87 (7) | **1.87 (6)** |
+| noise (unclustered) | 140 | 0.455 | ADEQUATE | 62% | 2.29 (3) | 1.82 (7) |
+| **Fungal Disease Prevention in Crops** | 28 | 0.432 | ADEQUATE | 61% | 1.67 (10) | **1.67 (8)** |
+| Vegetable Garden Watering Requirements | 94 | 0.523 | ADEQUATE | 43% | 1.83 (8) | 1.58 (9) |
+| Compost Pile Temperature Management | 134 | 0.579 | ADEQUATE | 41% | 1.80 (9) | 1.44 (13) |
+| Indeterminate Tomato Support Systems | 61 | 0.588 | ADEQUATE | 28% | 1.50 (13) | 1.43 (15) |
+| Composting Materials Guidelines | 39 | 0.579 | ADEQUATE | 36% | 1.39 (16) | 1.39 (16) |
+| Late Blight Identification and Symptoms | 28 | 0.572 | ADEQUATE | 21% | 1.27 (22) | 1.27 (22) |
+| Tomato Planting Soil Temperature | 29 | 0.557 | ADEQUATE | 38% | 1.27 (23) | 1.27 (23) |
+| Carbon-to-Nitrogen Ratio in Composting | 34 | 0.647 | ADEQUATE | 6% | 1.14 (26) | 1.14 (26) |
+| Tomato Ripening Temperature Control | 41 | 0.678 | ADEQUATE | 7% | 1.10 (27) | 1.10 (27) |
+
+(Clusters ranked 10–12, 14 and 17–21 and 24–25 are unchanged and omitted.)
+
+Both depth gaps now rank above every compost and tomato cluster. The highest
+of those, compost pile temperature, dropped from 9th to 13th. The noise
+bucket also dropped from 3rd to 7th, which is right: it's 140 unrelated
+leftovers, not one gap. Clusters of 50 probes or fewer keep exactly the same
+severity. Only the large ones changed.
 
 ### Reproducing
 
