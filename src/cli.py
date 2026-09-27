@@ -91,7 +91,9 @@ def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, 
           weights, hp_band, se_method, cluster, min_cluster_size, zone_thresholds, payload, auth_header, concurrency,
           model, db_dsn, no_db) -> None:
     """Probe a RAG system, score coverage per probe, and cluster the results into zones."""
-    from src.audit import cluster_outcomes, overall_score, persist, run_probes, write_cluster_csv, write_csv
+    from src.audit import (
+        cluster_outcomes, overall_score, persist, run_probes, write_cluster_csv, write_csv, write_responses,
+    )
     from src.clustering.naming import name_clusters
     from src.connectors.http import HTTPRAGConnector
     from src.data.kb_loader import kb_fingerprint, load_chunks, load_documents
@@ -173,6 +175,7 @@ def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, 
         click.echo(f"Wrote cluster summary to {cluster_path}")
 
     write_csv(outcomes, output)
+    write_responses(outcomes, output.with_suffix(".responses.jsonl"))
     click.echo(f"Wrote {len(outcomes)} rows to {output}")
     overall = overall_score(outcomes)
     if overall is not None:
@@ -185,6 +188,53 @@ def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, 
         click.echo(f"Stored audit run {report_id} in Postgres")
     else:
         click.echo("Postgres storage skipped (set POSTGRES_DSN or --db-dsn to enable)")
+
+
+@cli.command()
+@click.option("--audit", "audit_csv", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              help="Probe CSV written by `umbra audit` (its .clusters.csv must sit next to it).")
+@click.option("--kb-path", required=True, type=click.Path(exists=True, path_type=Path))
+@click.option("--output", required=True, type=click.Path(dir_okay=False, path_type=Path), help="GapReport JSON.")
+@click.option("--web-search", type=click.Choice(["none", "anthropic", "brave"]), default="anthropic", show_default=True,
+              help="Backend for external recommendations; 'none' gives KB-internal ones only.")
+@click.option("--top-k", default=10, show_default=True,
+              help="Besides every DARK and THIN cluster, recommend for the k most severe clusters of any tier.")
+@click.option("--zone-thresholds", default=f"{DEFAULT_THRESHOLDS.dark_below},{DEFAULT_THRESHOLDS.adequate_above}",
+              show_default=True)
+@click.option("--dashboard-uri", help="Where the coverage map will be served, stored as coverage_map_uri.")
+@click.option("--model", default=CLAUDE_MODEL, show_default=True)
+def report(audit_csv, kb_path, output, web_search, top_k, zone_thresholds, dashboard_uri, model) -> None:
+    """Build a GapReport (zones, severity ranking, recommendations) from an audit."""
+    from src.data.kb_loader import kb_fingerprint, load_chunks, load_documents
+    from src.probe_generation.taxonomy import anthropic_completer
+    from src.reports.builder import build_report
+    from src.reports.load import load_audit
+    from src.reports.search import make_provider
+
+    thresholds = ZoneThresholds.parse(zone_thresholds)
+    chunks = load_chunks(kb_path)
+    loaded = load_audit(audit_csv, chunks)
+    complete = search = None
+    if web_search != "none":
+        complete, search = anthropic_completer(model=model), make_provider(web_search)
+    source = "calibrated default" if thresholds == DEFAULT_THRESHOLDS else "--zone-thresholds"
+    gap_report = asyncio.run(build_report(
+        loaded.outcomes, loaded.clusters, chunks, kb_fingerprint=kb_fingerprint(load_documents(kb_path)),
+        thresholds=thresholds, thresholds_source=source, complete=complete, search=search, top_k=top_k,
+        coverage_map_uri=dashboard_uri, config={"audit": str(audit_csv), "web_search": web_search, "top_k": top_k},
+    ))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(gap_report.model_dump_json(indent=2) + "\n")
+
+    click.echo(f"{gap_report.cluster_count} clusters: {len(gap_report.dark_zones)} dark, {len(gap_report.thin_zones)} thin")
+    click.echo(f"{'rank':>4}  {'name':<40} {'zone':<9} {'severity':>8} {'unanswered':>10}  recs")
+    for c in gap_report.clusters[:15]:
+        click.echo(f"{c.severity_rank:>4}  {c.name[:40]:<40} {c.zone:<9} {c.severity:>8.2f} {c.unanswered_share:>10.0%}  "
+                   f"{len(c.recommendations)}")
+    d = gap_report.estimated_improvement_detail
+    click.echo(f"Overall {d.overall_before:.3f} -> {d.overall_after:.3f} after top {d.recommendations_applied} "
+               f"recommendations (simulated, optimistic)")
+    click.echo(f"Wrote {output}")
 
 
 def _echo_group_means(label: str, pairs) -> None:
