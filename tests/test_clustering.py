@@ -11,7 +11,14 @@ from src.audit import ProbeOutcome, cluster_outcomes
 from src.clustering.hdbscan_clusterer import NOISE, identify_clusters
 from src.clustering.naming import NOISE_NAME, name_clusters
 from src.clustering.umap_projector import project_for_clustering, project_to_2d
-from src.clustering.zones import classify_zone, compute_cluster_coverage, representative_indices, severity
+from src.clustering.zones import (
+    SPEC_THRESHOLDS,
+    ZoneThresholds,
+    classify_zone,
+    compute_cluster_coverage,
+    representative_indices,
+    severity,
+)
 from src.connectors.base import RAGResponse
 from src.embeddings import embed
 from src.probe_generation.taxonomy import Probe
@@ -71,8 +78,18 @@ def test_clusters_under_min_share_are_merged_into_noise(three_blobs):
 
 
 @pytest.mark.parametrize("mean,zone", [(0.0, "DARK"), (0.299, "DARK"), (0.30, "THIN"), (0.60, "THIN"), (0.601, "ADEQUATE")])
-def test_zone_thresholds(mean, zone):
+def test_spec_zone_thresholds(mean, zone):
+    assert classify_zone(mean, SPEC_THRESHOLDS) == zone
+
+
+@pytest.mark.parametrize("mean,zone", [(0.30, "DARK"), (0.323, "DARK"), (0.324, "THIN"), (0.40, "THIN"), (0.45, "ADEQUATE")])
+def test_calibrated_default_thresholds(mean, zone):
     assert classify_zone(mean) == zone
+
+
+def test_thresholds_must_be_ordered():
+    with pytest.raises(ValueError):
+        ZoneThresholds(0.5, 0.4)
 
 
 def test_severity_formula_and_ordering():
@@ -93,7 +110,7 @@ def test_compute_cluster_coverage():
     scores = [0.1, 0.2, 0.15, 0.8, 0.7, 0.5]
     embs = np.eye(6)
     coords = np.arange(12, dtype=float).reshape(6, 2)
-    out = compute_cluster_coverage(labels, scores, embs, coords, [f"q{i}" for i in range(6)])
+    out = compute_cluster_coverage(labels, scores, embs, coords, [f"q{i}" for i in range(6)], SPEC_THRESHOLDS)
     by_id = {c.cluster_id: c for c in out}
     assert by_id[0].zone == "DARK" and by_id[1].zone == "ADEQUATE" and by_id[NOISE].zone == "THIN"
     assert by_id[0].query_count == 3 and by_id[0].mean_cs == pytest.approx(0.15)

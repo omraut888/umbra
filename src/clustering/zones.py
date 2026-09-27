@@ -28,7 +28,11 @@ class ZoneThresholds:
 
 
 SPEC_THRESHOLDS = ZoneThresholds(0.30, 0.60)
-DEFAULT_THRESHOLDS = SPEC_THRESHOLDS
+# Fit on the gap-injection benchmark (3 seeds, 46 labeled clusters) with MiniLM
+# embeddings and dispersion SE; see docs/findings.md section 4. With MiniLM a
+# well-answered probe tops out around 0.70, so the spec's 0.60 line put 25 of 28
+# known-present clusters in THIN. Re-fit these if the embedding model changes.
+DEFAULT_THRESHOLDS = ZoneThresholds(0.324, 0.400)
 
 
 def classify_zone(mean_cs: float, thresholds: ZoneThresholds = DEFAULT_THRESHOLDS) -> str:
