@@ -76,3 +76,48 @@ def test_fit_purity_rule_learns_direction():
                [{"mean_cs": 0.6, "tier": "present", "p": 0.1}]  # adequate by score: ignored
     rule = fit_purity_rule(clusters, th, "p")
     assert rule.dark_if_above is False and 0.3 < rule.threshold < 0.7
+
+
+def test_inject_respects_configured_tier_counts():
+    import pytest as _pytest
+
+    inj = inject(0, n_absent=2, n_thin=1)
+    assert Counter(inj.tiers.values()) == {"absent": 2, "thin": 1, "present": len(UNITS) - 3}
+    with _pytest.raises(ValueError):
+        inject(0, n_absent=10, n_thin=4)
+
+
+async def test_run_benchmark_skips_finished_seeds_and_flags_config_changes(tmp_path):
+    import json
+
+    from src.benchmark.gap_injection import BenchmarkConfig, run_benchmark
+
+    seed_dir = tmp_path / "seed_7"
+    seed_dir.mkdir()
+    (seed_dir / "result.json").write_text(json.dumps({"seed": 7, "config": {"n_probes": 1}}))
+    messages = []
+
+    async def never(prompt):
+        raise AssertionError("finished seeds must not call the model")
+
+    out = await run_benchmark([7], tmp_path, BenchmarkConfig(), complete=never, echo=messages.append)
+    assert out[0]["seed"] == 7 and "different config" in messages[0]
+
+
+def test_spec10_check_and_thresholds_file(tmp_path):
+    import json
+
+    from src.benchmark.calibrate import spec10_check, write_thresholds
+    from src.cli import _thresholds
+
+    s = {"calibrated": [0.33, 0.41], "n_seeds": 2, "n_labeled": 9,
+         "comparison": {"calibrated": {"spec10_per_seed": {0: {"precision": 0.9, "recall": 0.8, "fpr": 0.2},
+                                                           1: {"precision": 0.7, "recall": 0.6, "fpr": 0.0}}}}}
+    check = spec10_check(s)
+    assert check["precision"]["verdict"] == "target" and check["recall"]["verdict"] == "below minimum"
+    assert check["fpr"]["verdict"] == "target"
+    path = tmp_path / "t.json"
+    write_thresholds(s, path)
+    th, source = _thresholds("0.3,0.6", path)
+    assert (th.dark_below, th.adequate_above) == (0.33, 0.41) and "2 gap-injection seeds" in source
+    assert json.loads(path.read_text())["fit_on"].startswith("2 ")

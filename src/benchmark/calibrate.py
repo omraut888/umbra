@@ -25,6 +25,8 @@ from src.data.synthetic_kb_builder import ALL_DOCS
 DOC_TOPIC = {d.doc_id: d.topic for d in ALL_DOCS}
 
 EXPECTED = {"absent": "DARK", "thin": "THIN", "present": "ADEQUATE"}
+# spec §10 targets for dark-zone detection: (target, acceptable minimum)
+SPEC10_TARGETS = {"precision": (0.80, 0.70), "recall": (0.85, 0.75), "fpr": (0.15, 0.25)}
 
 
 def load(out_dir: Path) -> List[dict]:
@@ -269,15 +271,49 @@ def print_summary(s: dict) -> None:
         fmt = lambda x: f"{x[0]:.2f}/{x[1]:.2f}/{x[2]:.2f}"
         print(f"  {name:<25}{rule:<22}{fmt(ins['absent']):<18}{fmt(ins['thin']):<18}{ins['accuracy']:<11.0%}"
               f"{lo['absent_f1']:<14.2f}{lo['thin_f1']:<14.2f}{lo['accuracy']:.0%}")
+    if "spec10_check" in s:
+        print("\nSpec §10 dark-zone detection targets (calibrated thresholds, mean over seeds)")
+        for metric, v in s["spec10_check"].items():
+            op = "<=" if metric == "fpr" else ">="
+            print(f"  {metric:<10} {v['value']:.2f}   target {op} {v['target']:.2f}, minimum {op} {v['minimum']:.2f}"
+                  f"  -> {v['verdict']}")
     print(f"\nStrategy mix of probes in absent-labeled clusters: {s['absent_cluster_strategy_mix']}")
     print(f"All probes by strategy: {s['strategy_totals']}")
 
 
+def spec10_check(s: dict, which: str = "calibrated") -> Dict[str, dict]:
+    per_seed = s["comparison"][which]["spec10_per_seed"].values()
+    out = {}
+    for metric, (target, minimum) in SPEC10_TARGETS.items():
+        value = st.fmean(x[metric] for x in per_seed)
+        if metric == "fpr":
+            verdict = "target" if value <= target else "acceptable" if value <= minimum else "below minimum"
+        else:
+            verdict = "target" if value >= target else "acceptable" if value >= minimum else "below minimum"
+        out[metric] = {"value": value, "target": target, "minimum": minimum, "verdict": verdict}
+    return out
+
+
+def write_thresholds(s: dict, path: Path) -> None:
+    dark, adequate = s["calibrated"]
+    path.write_text(json.dumps({
+        "dark_below": round(dark, 4), "adequate_above": round(adequate, 4),
+        "fit_on": f"{s['n_seeds']} gap-injection seeds, {s['n_labeled']} labeled clusters",
+    }, indent=2) + "\n")
+
+
+def calibrate(out_dir: Path, thresholds_out: Optional[Path] = None) -> dict:
+    s = summarize(load(out_dir))
+    s["spec10_check"] = spec10_check(s)
+    (out_dir / "calibration.json").write_text(json.dumps(s, indent=2) + "\n")
+    if thresholds_out:
+        write_thresholds(s, thresholds_out)
+    return s
+
+
 def main() -> None:
     out_dir = Path(sys.argv[1] if len(sys.argv) > 1 else "out/benchmark")
-    s = summarize(load(out_dir))
-    (out_dir / "calibration.json").write_text(json.dumps(s, indent=2) + "\n")
-    print_summary(s)
+    print_summary(calibrate(out_dir))
 
 
 if __name__ == "__main__":
