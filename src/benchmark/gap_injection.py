@@ -38,6 +38,7 @@ import httpx
 from dotenv import load_dotenv
 
 from src.audit import cluster_outcomes, run_probes, write_cluster_csv, write_csv
+from src.clustering.hdbscan_clusterer import DEFAULT_MIN_CLUSTER_SIZE
 from src.connectors.http import HTTPRAGConnector
 from src.connectors.mock_rag_server import create_app
 from src.data.kb_loader import load_chunks
@@ -126,6 +127,7 @@ class BenchmarkConfig:
     per_topic: int = 30  # kb_blind probes per topic
     n_absent: int = N_ABSENT
     n_thin: int = N_THIN
+    min_cluster_size: int = DEFAULT_MIN_CLUSTER_SIZE
 
 
 async def run_seed(seed: int, out_dir: Path, config: BenchmarkConfig, complete) -> dict:
@@ -144,7 +146,7 @@ async def run_seed(seed: int, out_dir: Path, config: BenchmarkConfig, complete) 
     transport = httpx.ASGITransport(app=create_app(seed_dir / "kb"))
     async with HTTPRAGConnector("http://mock/query", transport=transport) as conn:
         outcomes = await run_probes(probes, conn, CoverageScorer())
-    clusters = await asyncio.to_thread(cluster_outcomes, outcomes)
+    clusters = await asyncio.to_thread(cluster_outcomes, outcomes, config.min_cluster_size)
 
     write_csv(outcomes, seed_dir / "probes.csv")
     (seed_dir / "probes.taxonomy.json").write_text(json.dumps([t.as_dict() for t in taxonomy or []], indent=2) + "\n")
@@ -168,6 +170,23 @@ async def run_seed(seed: int, out_dir: Path, config: BenchmarkConfig, complete) 
     return result
 
 
+def recluster_seed(seed_dir: Path, min_cluster_size: int) -> dict:
+    """Redo clustering and labels for a finished seed from its scored probes."""
+    from src.reports.load import load_probes
+
+    result = json.loads((seed_dir / "result.json").read_text())
+    outcomes = load_probes(seed_dir / "probes.csv", load_chunks(seed_dir / "kb"))
+    clusters = cluster_outcomes(outcomes, min_cluster_size)
+    write_csv(outcomes, seed_dir / "probes.csv")
+    write_cluster_csv(clusters, seed_dir / "probes.clusters.csv")
+    result["clusters"] = label_clusters(outcomes, clusters, result["tiers"])
+    config = result.get("config") or asdict(BenchmarkConfig(min_cluster_size=20))  # early seeds didn't record one
+    config["min_cluster_size"] = min_cluster_size
+    result["config"] = config
+    (seed_dir / "result.json").write_text(json.dumps(result, indent=2) + "\n")
+    return result
+
+
 async def run_benchmark(seeds: List[int], out_dir: Path, config: BenchmarkConfig, force: bool = False,
                         complete=None, echo=print) -> List[dict]:
     complete = complete or anthropic_completer()
@@ -176,7 +195,7 @@ async def run_benchmark(seeds: List[int], out_dir: Path, config: BenchmarkConfig
         done = out_dir / f"seed_{seed}" / "result.json"
         if done.exists() and not force:
             r = json.loads(done.read_text())
-            if r.get("config", asdict(BenchmarkConfig())) != asdict(config):
+            if r.get("config") != asdict(config):
                 echo(f"seed {seed}: already run with a different config {r.get('config')}; use --force to redo it")
             else:
                 echo(f"seed {seed}: already done, skipping")

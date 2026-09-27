@@ -15,6 +15,7 @@ from typing import List, Optional, Tuple
 import click
 from dotenv import load_dotenv
 
+from src.clustering.hdbscan_clusterer import DEFAULT_MIN_CLUSTER_SIZE
 from src.clustering.zones import DEFAULT_THRESHOLDS, ZoneThresholds
 from src.probe_generation.strategies import ALL_STRATEGIES
 from src.probe_generation.taxonomy import CLAUDE_MODEL, Probe
@@ -78,7 +79,7 @@ def cli(verbose: bool) -> None:
 @click.option("--se-method", type=click.Choice(SE_METHODS), default=DEFAULT_SE_METHOD, show_default=True,
               help="dispersion = mean pairwise cosine distance; spec = the original spec §4 histogram entropy.")
 @click.option("--cluster/--no-cluster", default=True, show_default=True, help="UMAP + HDBSCAN + zone summary.")
-@click.option("--min-cluster-size", default=20, show_default=True)
+@click.option("--min-cluster-size", default=DEFAULT_MIN_CLUSTER_SIZE, show_default=True)
 @click.option("--zone-thresholds", default=f"{DEFAULT_THRESHOLDS.dark_below},{DEFAULT_THRESHOLDS.adequate_above}",
               show_default=True, help="dark_below,adequate_above for cluster zones.")
 @click.option("--zone-thresholds-file", type=click.Path(exists=True, dir_okay=False, path_type=Path),
@@ -265,13 +266,44 @@ def benchmark() -> None:
 @click.option("--per-topic", default=30, show_default=True, help="kb_blind probes per topic.")
 @click.option("--n-absent", default=4, show_default=True, help="Topics removed entirely per seed.")
 @click.option("--n-thin", default=3, show_default=True, help="Topics cut down to a buried passage per seed.")
+@click.option("--min-cluster-size", default=DEFAULT_MIN_CLUSTER_SIZE, show_default=True)
 @click.option("--force", is_flag=True, help="Redo seeds that already have results.")
-def benchmark_run(seeds, out_dir, n_probes, per_topic, n_absent, n_thin, force) -> None:
+def benchmark_run(seeds, out_dir, n_probes, per_topic, n_absent, n_thin, min_cluster_size, force) -> None:
     """Run seeds (skipping finished ones unless --force)."""
     from src.benchmark.gap_injection import BenchmarkConfig, run_benchmark
 
-    config = BenchmarkConfig(n_probes=n_probes, per_topic=per_topic, n_absent=n_absent, n_thin=n_thin)
+    config = BenchmarkConfig(n_probes=n_probes, per_topic=per_topic, n_absent=n_absent, n_thin=n_thin,
+                             min_cluster_size=min_cluster_size)
     asyncio.run(run_benchmark([int(x) for x in seeds.split(",")], out_dir, config, force, echo=click.echo))
+
+
+@benchmark.command("recluster")
+@click.option("--out", "out_dir", default="out/benchmark", show_default=True,
+              type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("--min-cluster-size", default=DEFAULT_MIN_CLUSTER_SIZE, show_default=True)
+def benchmark_recluster(out_dir, min_cluster_size) -> None:
+    """Re-cluster finished seeds from their scored probes (no LLM calls), e.g. after changing min_cluster_size."""
+    from src.benchmark.gap_injection import recluster_seed
+
+    for result_path in sorted(out_dir.glob("seed_*/result.json")):
+        r = recluster_seed(result_path.parent, min_cluster_size)
+        labeled = [c for c in r["clusters"] if c["tier"]]
+        click.echo(f"seed {r['seed']}: {len(r['clusters'])} clusters, {len(labeled)} labeled at "
+                   f"min_cluster_size={min_cluster_size}")
+
+
+@benchmark.command("recall")
+@click.option("--out", "out_dir", default="out/benchmark", show_default=True,
+              type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("--refit", is_flag=True, help="Held-out comparison with thresholds re-fit per min_cluster_size.")
+def benchmark_recall(out_dir, refit) -> None:
+    """Recall sensitivity to min_cluster_size and kb_blind probe count (no LLM calls)."""
+    import sys
+
+    from src.benchmark import recall
+
+    sys.argv = ["recall", str(out_dir)] + (["--refit"] if refit else [])
+    recall.main()
 
 
 @benchmark.command("calibrate")

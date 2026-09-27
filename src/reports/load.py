@@ -50,6 +50,12 @@ def _mix(mix: Dict[str, int]) -> Dict[str, int]:
 
 def load_audit(probes_csv: str | Path, kb_chunks: List[Chunk]) -> LoadedAudit:
     probes_csv = Path(probes_csv)
+    outcomes = load_probes(probes_csv, kb_chunks)
+    return LoadedAudit(outcomes, _load_clusters(probes_csv, outcomes), probes_csv)
+
+
+def load_probes(probes_csv: str | Path, kb_chunks: List[Chunk]) -> List[ProbeOutcome]:
+    probes_csv = Path(probes_csv)
     rows = list(csv.DictReader(open(probes_csv, newline="", encoding="utf-8")))
     responses_path = probes_csv.with_suffix(".responses.jsonl")
     texts_by_probe: Dict[str, List[str]] = {}
@@ -93,7 +99,10 @@ def load_audit(probes_csv: str | Path, kb_chunks: List[Chunk]) -> LoadedAudit:
         outcomes.append(o)
     if unresolved:
         log.warning("%d retrieved chunk ids didn't match any KB chunk; treated as empty text", unresolved)
+    return outcomes
 
+
+def _load_clusters(probes_csv: Path, outcomes: List[ProbeOutcome]) -> List[ClusterCoverage]:
     clusters = []
     clusters_csv = probes_csv.with_suffix(".clusters.csv")
     for c in csv.DictReader(open(clusters_csv, newline="", encoding="utf-8")):
@@ -109,4 +118,4 @@ def load_audit(probes_csv: str | Path, kb_chunks: List[Chunk]) -> LoadedAudit:
             representative_queries=json.loads(c["representative_queries"]), name=c["name"] or None,
             strategy_mix=_mix(json.loads(c["strategy_mix"])), purity=_float(c.get("purity", "")),
         ))
-    return LoadedAudit(outcomes, clusters, probes_csv)
+    return clusters
