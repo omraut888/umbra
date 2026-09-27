@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Cognitive Load Router — Full Technical Specification</title>
+<style>
+:root{
+  --ink:#0f0f0f;--ink2:#3a3a3a;--ink3:#6b6b6b;
+  --bg:#fafaf8;--surface:#ffffff;--surface2:#f4f3f0;
+  --border:#e2e0db;--border2:#ccc9c2;
+  --accent:#065f46;--accent2:#0a7a5a;--accent-light:#d1fae5;
+  --amber:#92400e;--amber-light:#fef3c7;
+  --red:#991b1b;--red-light:#fee2e2;
+  --blue:#1e40af;--blue-light:#dbeafe;
+  --purple:#4c1d95;--purple-light:#ede9fe;
+  --code-bg:#1e1e2e;--code-fg:#cdd6f4;
+  --mono:'JetBrains Mono','Fira Code',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);display:flex;min-height:100vh;font-size:15px;line-height:1.7}
+nav#sidebar{width:256px;min-width:256px;background:#065f46;color:#d1fae5;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;padding:0 0 40px;z-index:100}
+nav#sidebar .brand{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,.12)}
+nav#sidebar .brand h1{font-size:17px;font-weight:700;color:#fff;letter-spacing:-.2px}
+nav#sidebar .brand p{font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;font-family:var(--mono)}
+nav#sidebar ul{list-style:none;padding:10px 0}
+nav#sidebar ul li a{display:block;padding:7px 20px;font-size:12px;color:rgba(255,255,255,.65);text-decoration:none;border-left:2px solid transparent;transition:all .15s}
+nav#sidebar ul li a:hover,nav#sidebar ul li a.active{color:#fff;border-left-color:#6ee7b7;background:rgba(255,255,255,.07)}
+nav#sidebar .nav-section{font-size:10px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.3);text-transform:uppercase;padding:14px 20px 4px}
+main{margin-left:256px;flex:1;padding:48px 64px 96px;max-width:960px}
+.page-header{margin-bottom:48px;padding-bottom:32px;border-bottom:1px solid var(--border)}
+.page-header .eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;color:var(--accent2);text-transform:uppercase;margin-bottom:12px}
+.page-header h1{font-size:38px;font-weight:800;letter-spacing:-1px;color:var(--ink);line-height:1.1;margin-bottom:12px}
+.page-header .subtitle{font-size:17px;color:var(--ink2);line-height:1.6;max-width:680px}
+.doc-section{margin-bottom:60px;scroll-margin-top:32px}
+.section-header{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
+.section-num{font-size:11px;font-weight:700;color:var(--accent2);font-family:var(--mono);min-width:28px}
+h2.section-title{font-size:24px;font-weight:700;color:var(--ink);letter-spacing:-.3px}
+h3{font-size:16px;font-weight:600;color:var(--ink);margin:28px 0 10px}
+h4{font-size:13px;font-weight:600;color:var(--ink2);margin:18px 0 7px;text-transform:uppercase;letter-spacing:.05em}
+p{color:var(--ink2);margin-bottom:12px;line-height:1.75}
+ul,ol{margin:8px 0 14px 20px;color:var(--ink2)}
+li{margin-bottom:5px;line-height:1.65}
+strong{color:var(--ink);font-weight:600}
+.callout{border-radius:8px;padding:16px 18px;margin:18px 0;border-left:3px solid}
+.callout.insight{background:var(--accent-light);border-color:var(--accent2)}
+.callout.insight .cl{color:var(--accent2)}
+.callout.warn{background:var(--amber-light);border-color:var(--amber)}
+.callout.warn .cl{color:var(--amber)}
+.callout.danger{background:var(--red-light);border-color:var(--red)}
+.callout.danger .cl{color:var(--red)}
+.callout.info{background:var(--blue-light);border-color:var(--blue)}
+.callout.info .cl{color:var(--blue)}
+.cl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.callout p{margin:0;font-size:13px;line-height:1.65}
+pre{background:var(--code-bg);border-radius:8px;padding:20px;overflow-x:auto;margin:14px 0;font-size:12px;line-height:1.65}
+code{color:var(--code-fg);font-family:var(--mono)}
+.ic{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:var(--mono);font-size:12px;color:var(--accent2)}
+.formula{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:18px 24px;margin:16px 0;text-align:center;font-family:var(--mono);font-size:13px;color:var(--ink);line-height:2}
+.formula .fl{font-size:11px;color:var(--ink3);font-family:var(--sans);margin-bottom:8px;text-align:left;font-weight:600;letter-spacing:.04em}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0}
+th{background:var(--surface2);color:var(--ink);font-weight:600;padding:10px 14px;text-align:left;border:1px solid var(--border)}
+td{padding:9px 14px;border:1px solid var(--border);color:var(--ink2);vertical-align:top}
+tr:nth-child(even) td{background:var(--surface2)}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;margin:2px 3px 2px 0;letter-spacing:.03em}
+.b-green{background:var(--accent-light);color:var(--accent2)}
+.b-amber{background:var(--amber-light);color:var(--amber)}
+.b-blue{background:var(--blue-light);color:var(--blue)}
+.b-purple{background:var(--purple-light);color:var(--purple)}
+.b-red{background:var(--red-light);color:var(--red)}
+.schema-block{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:14px 0}
+.schema-header{background:var(--surface2);padding:10px 16px;font-size:12px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--border);font-family:var(--mono)}
+.schema-body{padding:14px 16px}
+.sf{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.sf:last-child{border-bottom:none}
+.fn{font-family:var(--mono);color:var(--accent2);min-width:160px;font-weight:500}
+.ft{color:#065f46;min-width:100px;font-family:var(--mono)}
+.fd{color:var(--ink3);flex:1}
+.phase{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin:10px 0}
+.phase-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.pl{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--accent2);text-transform:uppercase}
+.pt{font-size:14px;font-weight:600;color:var(--ink)}
+.ptm{font-size:11px;color:var(--ink3);margin-left:auto;font-family:var(--mono)}
+.tier-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.tier-card{border-radius:10px;padding:14px 16px;border:1px solid var(--border)}
+.tier-name{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.tier-model{font-size:11px;font-family:var(--mono);margin-bottom:8px}
+.tier-stat{font-size:11px;color:var(--ink3);margin-bottom:2px}
+.contribution{background:linear-gradient(135deg,var(--accent-light),#ecfdf5);border:1px solid #6ee7b7;border-radius:10px;padding:20px 22px;margin:12px 0}
+.contribution h4{color:var(--accent2);margin:0 0 6px;font-size:14px}
+.contribution p{font-size:13px;margin:0;color:var(--ink2)}
+.divider{height:1px;background:var(--border);margin:40px 0}
+.k{color:#cba6f7}.s{color:#a6e3a1}.c{color:#6c7086;font-style:italic}.n{color:#89b4fa}.f{color:#89dceb}.o{color:#f38ba8}.num{color:#fab387}
+</style>
+</head>
+<body>
+<nav id="sidebar">
+  <div class="brand">
+    <h1>Cognitive Load Router</h1>
+    <p>Full Technical Specification</p>
+  </div>
+  <ul>
+    <li class="nav-section">Foundation</li>
+    <li><a href="#thesis">1. Thesis & problem</a></li>
+    <li><a href="#architecture">2. System architecture</a></li>
+    <li class="nav-section">Core Engine</li>
+    <li><a href="#features">3. Feature engineering</a></li>
+    <li><a href="#classifier">4. Complexity classifier</a></li>
+    <li><a href="#routing">5. Routing logic</a></li>
+    <li><a href="#feedback">6. Feedback loop</a></li>
+    <li class="nav-section">Infrastructure</li>
+    <li><a href="#gateway">7. Gateway architecture</a></li>
+    <li><a href="#storage">8. Storage design</a></li>
+    <li><a href="#monitoring">9. Monitoring & LLMOps</a></li>
+    <li><a href="#api">10. API design</a></li>
+    <li class="nav-section">Build Plan</li>
+    <li><a href="#roadmap">11. Implementation roadmap</a></li>
+    <li><a href="#research">12. Research contributions</a></li>
+    <li><a href="#failure">13. Failure modes</a></li>
+  </ul>
+</nav>
+<main>
+<div class="page-header">
+  <div class="eyebrow">Technical Specification · v1.0</div>
+  <h1>Cognitive Load Router</h1>
+  <p class="subtitle">Self-learning LLM gateway that classifies task complexity in under 100ms, routes each call to the optimal model tier, and continuously improves its routing accuracy from production feedback.</p>
+  <div style="margin-top:16px">
+    <span class="badge b-green">XGBoost classifier</span>
+    <span class="badge b-blue">FastAPI gateway</span>
+    <span class="badge b-amber">MLflow versioning</span>
+    <span class="badge b-purple">Online learning</span>
+    <span class="badge b-green">Grafana cost dashboard</span>
+  </div>
+</div>
+
+<div class="doc-section" id="thesis">
+  <div class="section-header"><span class="section-num">01</span><h2 class="section-title">Thesis & problem</h2></div>
+  <p>Every company building on LLMs routes every call to one model. Usually the most capable one they can afford — because nobody wants to be responsible for the day a cheap model gave a wrong answer on an important query. The result: <strong>70–80% of production LLM spend is wasted</strong> routing simple queries to expensive models.</p>
+  <div class="callout insight">
+    <div class="cl">Core insight</div>
+    <p>Task complexity is predictable before inference. A query like "summarize this sentence" requires fundamentally different reasoning than "given the following SEC filing, calculate the 3-year CAGR of free cash flow and explain whether the trend is consistent with management's guidance." The cognitive load of the second query is 50× the first — and measurable from the query itself, in milliseconds, before spending a single token on inference.</p>
+  </div>
+  <h3>The four cognitive dimensions</h3>
+  <p>Complexity is not one-dimensional. A query can be long but simple (summarize 5 pages of boilerplate). A query can be short but deeply complex (prove the Riemann hypothesis). The router models complexity across four independent axes:</p>
+  <table>
+    <tr><th>Dimension</th><th>What it measures</th><th>Proxy signal</th></tr>
+    <tr><td>Reasoning depth</td><td>How many inferential steps are required?</td><td>Causal connectives, conditional structures, "given that... what if..."</td></tr>
+    <tr><td>Knowledge breadth</td><td>How many distinct domains must be synthesized?</td><td>Named entity count, domain classifier output, cross-domain term co-occurrence</td></tr>
+    <tr><td>Instruction precision</td><td>How many constraints must be satisfied simultaneously?</td><td>Constraint keyword count, format requirements, length specifications</td></tr>
+    <tr><td>Tool dependency</td><td>Does answering require external tool calls?</td><td>Query pattern matching, entity types that imply lookup (dates, prices, names)</td></tr>
+  </table>
+  <div class="callout warn">
+    <div class="cl">The key non-obvious insight</div>
+    <p>Token count alone is a terrible complexity proxy. "Write me a 2000-word summary of this document" has high token output but low reasoning complexity. "What is 2+2?" has minimal tokens but trivially low complexity. The router ignores token count as a primary feature and instead models the reasoning structure of the query.</p>
+  </div>
+</div>
+
+<div class="doc-section" id="architecture">
+  <div class="section-header"><span class="section-num">02</span><h2 class="section-title">System architecture</h2></div>
+  <p>Four components, clean separation of concerns. The gateway is the request handler. The classifier is the brain. The feedback collector is the learning mechanism. The cost tracker is the business value proof.</p>
+  <pre><code><span class="c"># Request flow</span>
+Client Request
+  → Gateway (FastAPI) → Feature Extractor → XGBoost Classifier
+  → Routing Decision → Model API Call
+  → Response → Judge Model (async) → Feedback Store
+  → Weekly: Feedback Aggregator → XGBoost Retrainer → MLflow Registry → Gateway reload
+
+<span class="c"># Storage</span>
+PostgreSQL     → routing_logs, model_performance, feedback_records
+Redis          → hot cache (repeated queries), model tier thresholds
+MLflow         → model registry, experiment tracking, artifact storage
+Prometheus     → real-time metrics (latency, cost, accuracy)
+Grafana        → cost dashboard, routing accuracy, model drift</code></pre>
+
+  <h3>Model tier definitions</h3>
+  <div class="tier-grid">
+    <div class="tier-card" style="border-color:#d1fae5">
+      <div class="tier-name">Tier 0 — Instant</div>
+      <div class="tier-model" style="color:#065f46">Groq · Llama-3-8B</div>
+      <div class="tier-stat">~$0.0001/1k tokens</div>
+      <div class="tier-stat">~120ms latency</div>
+      <div class="tier-stat">Factual lookup, simple Q&A, classification</div>
+    </div>
+    <div class="tier-card" style="border-color:#fef3c7">
+      <div class="tier-name">Tier 1 — Standard</div>
+      <div class="tier-model" style="color:#92400e">Claude Haiku</div>
+      <div class="tier-stat">~$0.0008/1k tokens</div>
+      <div class="tier-stat">~400ms latency</div>
+      <div class="tier-stat">Summarization, extraction, moderate reasoning</div>
+    </div>
+    <div class="tier-card" style="border-color:#dbeafe">
+      <div class="tier-name">Tier 2 — Advanced</div>
+      <div class="tier-model" style="color:#1e40af">Claude Sonnet</div>
+      <div class="tier-stat">~$0.003/1k tokens</div>
+      <div class="tier-stat">~1200ms latency</div>
+      <div class="tier-stat">Multi-step reasoning, code, analysis</div>
+    </div>
+    <div class="tier-card" style="border-color:#ede9fe">
+      <div class="tier-name">Tier 3 — Expert</div>
+      <div class="tier-model" style="color:#4c1d95">Claude Opus</div>
+      <div class="tier-stat">~$0.015/1k tokens</div>
+      <div class="tier-stat">~3000ms latency</div>
+      <div class="tier-stat">Novel reasoning, research-grade synthesis</div>
+    </div>
+  </div>
+</div>
+
+<div class="doc-section" id="features">
+  <div class="section-header"><span class="section-num">03</span><h2 class="section-title">Feature engineering</h2></div>
+  <p>The feature vector is the core intellectual contribution of this project. 28 features, all extractable in under 5ms from the raw query string and optional context. No model inference required at feature extraction time.</p>
+
+  <h3>Feature vector specification</h3>
+  <table>
+    <tr><th>Feature group</th><th>Features</th><th>Extraction method</th></tr>
+    <tr><td>Structural (8)</td><td>query_token_count, context_token_count, sentence_count, avg_sentence_length, question_count, instruction_verb_count, constraint_keyword_count, format_requirement_flag</td><td>Regex + spaCy tokenizer (~0.3ms)</td></tr>
+    <tr><td>Reasoning signals (6)</td><td>causal_connective_count, conditional_structure_count, comparative_operator_count, multi_hop_indicator, hypothetical_flag, negation_depth</td><td>Dependency parse + keyword match (~1.2ms)</td></tr>
+    <tr><td>Knowledge domain (5)</td><td>domain_entropy, primary_domain_id, cross_domain_count, named_entity_count, technical_term_density</td><td>FastText domain classifier + NER (~2ms)</td></tr>
+    <tr><td>Tool dependency (4)</td><td>requires_lookup_flag, date_reference_count, numeric_precision_required, external_knowledge_signal</td><td>Pattern matching + entity type analysis (~0.2ms)</td></tr>
+    <tr><td>Output complexity (5)</td><td>requested_output_length, structured_output_flag, code_generation_flag, multi_part_answer_count, citation_required_flag</td><td>Output format parser (~0.3ms)</td></tr>
+  </table>
+
+  <h3>Key features in detail</h3>
+  <h4>Reasoning depth score</h4>
+  <pre><code><span class="k">import</span> re
+<span class="k">import</span> spacy
+
+CAUSAL_CONNECTIVES = [<span class="s">"because"</span>,<span class="s">"therefore"</span>,<span class="s">"consequently"</span>,<span class="s">"as a result"</span>,<span class="s">"hence"</span>,<span class="s">"thus"</span>,<span class="s">"since"</span>]
+CONDITIONAL_PATTERNS = [<span class="s">r"\bif\b.{0,50}\bthen\b"</span>, <span class="s">r"\bgiven that\b"</span>, <span class="s">r"\bassuming\b"</span>, <span class="s">r"\bwhat would happen if\b"</span>]
+MULTI_HOP_SIGNALS = [<span class="s">"first.*then.*finally"</span>, <span class="s">"step by step"</span>, <span class="s">"walk me through"</span>, <span class="s">"explain how"</span>]
+
+<span class="k">def</span> <span class="f">extract_reasoning_features</span>(query: str) -> dict:
+    q_lower = query.lower()
+    causal_count = <span class="f">sum</span>(<span class="num">1</span> <span class="k">for</span> c <span class="k">in</span> CAUSAL_CONNECTIVES <span class="k">if</span> c <span class="k">in</span> q_lower)
+    conditional_count = <span class="f">sum</span>(<span class="num">1</span> <span class="k">for</span> p <span class="k">in</span> CONDITIONAL_PATTERNS <span class="k">if</span> re.<span class="f">search</span>(p, q_lower))
+    multi_hop = <span class="f">int</span>(<span class="f">any</span>(re.<span class="f">search</span>(p, q_lower) <span class="k">for</span> p <span class="k">in</span> MULTI_HOP_SIGNALS))
+    <span class="c"># Dependency parse for negation depth</span>
+    doc = nlp(query)
+    negation_depth = <span class="f">sum</span>(<span class="num">1</span> <span class="k">for</span> token <span class="k">in</span> doc <span class="k">if</span> token.dep_ == <span class="s">"neg"</span>)
+    <span class="k">return</span> {
+        <span class="s">"causal_connective_count"</span>: causal_count,
+        <span class="s">"conditional_structure_count"</span>: conditional_count,
+        <span class="s">"multi_hop_indicator"</span>: multi_hop,
+        <span class="s">"negation_depth"</span>: negation_depth,
+    }</code></pre>
+
+  <h4>Domain entropy — measuring cross-domain breadth</h4>
+  <pre><code><span class="k">from</span> scipy.stats <span class="k">import</span> entropy
+<span class="k">import</span> numpy <span class="k">as</span> np
+
+<span class="c"># FastText domain classifier: outputs probability distribution over 10 domains</span>
+<span class="c"># Domains: finance, legal, medical, technical, science, history, general, code, math, creative</span>
+
+<span class="k">def</span> <span class="f">compute_domain_entropy</span>(query: str) -> float:
+    domain_probs = fasttext_classifier.<span class="f">predict_proba</span>(query)  <span class="c"># shape: (10,)</span>
+    <span class="c"># High entropy = query spans multiple domains = more complex routing</span>
+    <span class="c"># entropy([1,0,0,...]) = 0 (single domain, simple)</span>
+    <span class="c"># entropy([0.1,0.1,...]) = 2.3 (uniform across 10 domains, complex)</span>
+    <span class="k">return</span> <span class="f">float</span>(entropy(domain_probs + <span class="num">1e-10</span>))  <span class="c"># add epsilon for numerical stability</span></code></pre>
+
+  <div class="callout insight">
+    <div class="cl">Why domain entropy is powerful</div>
+    <p>A query about "the tax implications of RSU vesting for employees in California" spans finance, legal, and geographic domains simultaneously — high entropy, high complexity. A query like "what is the capital of France?" is single-domain with near-zero entropy — trivial routing to Tier 0. Domain entropy captures cross-domain complexity that keyword counting misses entirely.</p>
+  </div>
+
+  <h3>Feature importance (expected after training)</h3>
+  <table>
+    <tr><th>Feature</th><th>Expected importance rank</th><th>Why</th></tr>
+    <tr><td>multi_hop_indicator</td><td>1</td><td>Strongest single predictor of needing Tier 2+</td></tr>
+    <tr><td>domain_entropy</td><td>2</td><td>Cross-domain queries almost always need Tier 2+</td></tr>
+    <tr><td>conditional_structure_count</td><td>3</td><td>If/then reasoning requires model working memory</td></tr>
+    <tr><td>named_entity_count</td><td>4</td><td>Many entities = complex knowledge synthesis</td></tr>
+    <tr><td>code_generation_flag</td><td>5</td><td>Code gen always routes to Tier 2 minimum</td></tr>
+    <tr><td>constraint_keyword_count</td><td>6</td><td>More constraints = harder to satisfy simultaneously</td></tr>
+  </table>
+</div>
+
+<div class="doc-section" id="classifier">
+  <div class="section-header"><span class="section-num">04</span><h2 class="section-title">Complexity classifier</h2></div>
+  <p>XGBoost is chosen deliberately over neural models. The gateway is a <strong>latency-critical path</strong> — classifier inference must complete in under 5ms to keep total routing overhead under 100ms. XGBoost at 28 features runs in ~0.3ms. BERT would add 200ms — defeating the purpose.</p>
+
+  <h3>Model architecture</h3>
+  <pre><code><span class="k">import</span> xgboost <span class="k">as</span> xgb
+<span class="k">from</span> sklearn.model_selection <span class="k">import</span> StratifiedKFold
+<span class="k">import</span> mlflow
+
+<span class="k">class</span> <span class="f">ComplexityClassifier</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self):
+        self.model = xgb.<span class="f">XGBClassifier</span>(
+            n_estimators=<span class="num">200</span>,
+            max_depth=<span class="num">6</span>,
+            learning_rate=<span class="num">0.1</span>,
+            subsample=<span class="num">0.8</span>,
+            colsample_bytree=<span class="num">0.8</span>,
+            use_label_encoder=<span class="k">False</span>,
+            eval_metric=<span class="s">"mlogloss"</span>,
+            n_jobs=<span class="num">-1</span>,
+            tree_method=<span class="s">"hist"</span>,  <span class="c"># fastest for CPU inference</span>
+            num_class=<span class="num">4</span>            <span class="c"># SIMPLE, MODERATE, COMPLEX, EXPERT</span>
+        )
+        self.feature_extractor = <span class="f">FeatureExtractor</span>()
+        self.version = <span class="k">None</span>
+
+    <span class="k">def</span> <span class="f">predict_with_confidence</span>(self, query: str, context: str = <span class="s">""</span>) -> RoutingDecision:
+        features = self.feature_extractor.<span class="f">extract</span>(query, context)
+        proba = self.model.<span class="f">predict_proba</span>([features])[<span class="num">0</span>]
+        tier = <span class="f">int</span>(proba.<span class="f">argmax</span>())
+        confidence = <span class="f">float</span>(proba.<span class="f">max</span>())
+        <span class="c"># Apply confidence threshold: low-confidence predictions escalate one tier</span>
+        <span class="k">if</span> confidence < <span class="num">0.65</span> <span class="k">and</span> tier < <span class="num">3</span>:
+            tier += <span class="num">1</span>  <span class="c"># conservative escalation on uncertainty</span>
+        <span class="k">return</span> <span class="f">RoutingDecision</span>(tier=tier, confidence=confidence, feature_vector=features)</code></pre>
+
+  <h3>Training data bootstrapping</h3>
+  <p>Cold start is the hardest problem. No labeled data exists on day one. The solution is a three-phase bootstrap:</p>
+  <ol>
+    <li><strong>Phase 1 — Rule-based labels (Week 1):</strong> Write a deterministic labeling function using the most reliable heuristics (code_generation_flag → Tier 2, query_token_count &lt; 20 AND domain_entropy &lt; 0.5 → Tier 0). Generate 2,000 labeled examples from a diverse query dataset. This is your initial training set. Low accuracy (~65%) but enough to start.</li>
+    <li><strong>Phase 2 — Human spot-check labels (Week 2):</strong> Route 200 queries through all four tiers simultaneously, have a human rate quality per tier, label the minimum tier that achieved "acceptable" quality. Add these 200 to training data. Accuracy improves to ~78%.</li>
+    <li><strong>Phase 3 — Automated judge labels (Week 3+):</strong> The feedback loop (Section 06) generates continuous labels from production. Weekly retraining on the accumulated labeled set. Accuracy reaches 85%+ after ~1,000 production examples.</li>
+  </ol>
+
+  <h3>Calibration</h3>
+  <p>Raw XGBoost probabilities are not well-calibrated — the model is overconfident. Apply Platt scaling (logistic regression on held-out set) to calibrate probabilities. Calibrated confidence scores are used for the escalation logic above — uncalibrated scores would produce too many or too few escalations.</p>
+  <pre><code><span class="k">from</span> sklearn.calibration <span class="k">import</span> CalibratedClassifierCV
+
+<span class="c"># Wrap XGBoost with Platt scaling calibration</span>
+calibrated_model = <span class="f">CalibratedClassifierCV</span>(base_xgb_model, method=<span class="s">"sigmoid"</span>, cv=<span class="num">5</span>)
+calibrated_model.<span class="f">fit</span>(X_train, y_train)
+<span class="c"># Now predict_proba() outputs calibrated probabilities</span>
+<span class="c"># Reliability diagram should show diagonal alignment after calibration</span></code></pre>
+</div>
+
+<div class="doc-section" id="routing">
+  <div class="section-header"><span class="section-num">05</span><h2 class="section-title">Routing logic</h2></div>
+  <h3>Decision matrix</h3>
+  <table>
+    <tr><th>Condition</th><th>Tier</th><th>Rationale</th></tr>
+    <tr><td>Tier 0 predicted, confidence ≥ 0.80</td><td>0 (Groq)</td><td>High confidence simple query</td></tr>
+    <tr><td>Tier 0 predicted, confidence &lt; 0.80</td><td>1 (Haiku)</td><td>Conservative escalation on uncertainty</td></tr>
+    <tr><td>Tier 1 predicted, any confidence</td><td>1 (Haiku)</td><td>Standard routing</td></tr>
+    <tr><td>Tier 2 predicted, any confidence</td><td>2 (Sonnet)</td><td>Standard routing</td></tr>
+    <tr><td>Tier 3 predicted, any confidence</td><td>3 (Opus)</td><td>Standard routing</td></tr>
+    <tr><td>code_generation_flag = True</td><td>min(predicted, 2)</td><td>Never route code gen below Tier 2</td></tr>
+    <tr><td>User context: priority=HIGH</td><td>min(predicted+1, 3)</td><td>High-priority requests escalate</td></tr>
+    <tr><td>Repeated identical query (Redis hit)</td><td>0 (cached)</td><td>Return cached response, skip model</td></tr>
+    <tr><td>Classifier unavailable</td><td>2 (Sonnet)</td><td>Safe default — never route to Tier 0 on failure</td></tr>
+  </table>
+
+  <h3>Cost-quality Pareto frontier</h3>
+  <p>The routing thresholds are not fixed — they are tunable parameters that define a point on the cost-quality Pareto frontier. A <span class="ic">COST_WEIGHT</span> parameter (0.0 to 1.0) adjusts whether the system optimizes primarily for cost or quality:</p>
+  <div class="formula">
+    <div class="fl">Effective tier threshold with cost weight</div>
+    effective_threshold(tier) = base_threshold(tier) + COST_WEIGHT × tier_cost_penalty(tier)
+    <br/>
+    where COST_WEIGHT=0.0 → always route to highest-confidence tier
+    <br/>
+    COST_WEIGHT=1.0 → always route to cheapest tier with confidence > 0.50
+  </div>
+  <p>The Grafana dashboard exposes <span class="ic">COST_WEIGHT</span> as a live knob — engineering managers can tune the cost-quality tradeoff without a code deploy.</p>
+</div>
+
+<div class="doc-section" id="feedback">
+  <div class="section-header"><span class="section-num">06</span><h2 class="section-title">Feedback loop (the learning mechanism)</h2></div>
+  <div class="callout insight">
+    <div class="cl">Why this makes it AutoML, not just a gateway</div>
+    <p>Without the feedback loop this is a rule-based router. With it, the router continuously learns which feature patterns correspond to quality degradation at lower tiers — and adjusts its routing thresholds accordingly. After 90 days in production, the classifier has learned the specific complexity patterns of your application's queries, making it far more accurate than any pre-trained model.</p>
+  </div>
+
+  <h3>Quality signal collection (three sources)</h3>
+  <h4>Source 1: Judge model (automated, async)</h4>
+  <pre><code><span class="k">async def</span> <span class="f">judge_response_quality</span>(query: str, response: str, routing_tier: int) -> float:
+    <span class="c"># Runs asynchronously after response is returned — zero latency impact</span>
+    judge_prompt = <span class="f">f"""
+Rate the quality of this AI response on a scale of 0-10.
+Query: {query}
+Response: {response}
+
+Criteria:
+- Accuracy: Does the response correctly answer what was asked?
+- Completeness: Does it address all parts of the query?
+- Reasoning quality: Are claims supported with logic or evidence?
+
+Return ONLY a JSON: {{"score": N, "issues": ["list of issues if any"]}}
+"""</span>
+    result = <span class="k">await</span> claude_haiku.<span class="f">ainvoke</span>(judge_prompt)
+    <span class="k">return</span> result[<span class="s">"score"</span>] / <span class="num">10.0</span>  <span class="c"># normalize to [0,1]</span></code></pre>
+
+  <h4>Source 2: Behavioral signals (implicit)</h4>
+  <p>User behavior reveals quality without explicit feedback:</p>
+  <ul>
+    <li><strong>Follow-up clarification:</strong> if the next query is "can you clarify..." or "that's not what I meant..." → quality=0.3</li>
+    <li><strong>Immediate retry:</strong> same query within 30 seconds → quality=0.2</li>
+    <li><strong>No follow-up:</strong> query answered, conversation ends → quality=0.8 (weak positive signal)</li>
+    <li><strong>Explicit thumbs up/down:</strong> quality=1.0 or 0.0</li>
+  </ul>
+
+  <h4>Source 3: Counterfactual sampling (weekly)</h4>
+  <p>Weekly, randomly route 2% of queries through all four tiers simultaneously (in shadow mode — the user sees only the routed tier's response). Compare quality scores across tiers for the same query. This directly measures: "was routing this query to Tier 1 as good as Tier 2?" and updates the training labels accordingly.</p>
+
+  <h3>Retraining pipeline</h3>
+  <pre><code><span class="c"># Weekly Airflow DAG: retrain_router</span>
+<span class="k">def</span> <span class="f">weekly_retrain</span>():
+    <span class="c"># 1. Pull feedback records from PostgreSQL</span>
+    records = <span class="f">fetch_feedback_records</span>(days_back=<span class="num">7</span>)  <span class="c"># ~10k-50k records</span>
+
+    <span class="c"># 2. Construct training labels</span>
+    <span class="c"># Label = minimum tier that achieved quality_score >= QUALITY_THRESHOLD (0.75)</span>
+    labeled = []
+    <span class="k">for</span> r <span class="k">in</span> records:
+        min_acceptable_tier = <span class="f">min</span>(
+            tier <span class="k">for</span> tier, score <span class="k">in</span> r.tier_quality_pairs
+            <span class="k">if</span> score >= QUALITY_THRESHOLD
+        )
+        labeled.<span class="f">append</span>((r.feature_vector, min_acceptable_tier))
+
+    <span class="c"># 3. Retrain with accumulated dataset (new + historical)</span>
+    X, y = <span class="f">zip</span>(*labeled)
+    new_model = <span class="f">ComplexityClassifier</span>()
+    new_model.<span class="f">fit</span>(X, y)
+
+    <span class="c"># 4. Evaluate against hold-out set</span>
+    accuracy, cost_savings = <span class="f">evaluate_model</span>(new_model, holdout_set)
+
+    <span class="c"># 5. A/B test: route 10% to new model for 24hrs before full deploy</span>
+    <span class="k">with</span> mlflow.<span class="f">start_run</span>():
+        mlflow.<span class="f">log_metrics</span>({<span class="s">"accuracy"</span>: accuracy, <span class="s">"cost_savings_pct"</span>: cost_savings})
+        mlflow.<span class="f">sklearn</span>.<span class="f">log_model</span>(new_model, <span class="s">"complexity_classifier"</span>)
+
+    <span class="k">if</span> accuracy > current_model_accuracy + <span class="num">0.01</span>:  <span class="c"># only deploy on improvement</span>
+        <span class="f">deploy_model_to_gateway</span>(new_model)</code></pre>
+
+  <h3>Routing decision schema</h3>
+  <div class="schema-block">
+    <div class="schema-header">routing_log — PostgreSQL table (every request)</div>
+    <div class="schema-body">
+      <div class="sf"><span class="fn">request_id</span><span class="ft">UUID</span><span class="fd">Primary key. Links request to feedback records.</span></div>
+      <div class="sf"><span class="fn">query_hash</span><span class="ft">VARCHAR</span><span class="fd">SHA256 of query text. For deduplication and cache hit detection.</span></div>
+      <div class="sf"><span class="fn">feature_vector</span><span class="ft">JSONB</span><span class="fd">All 28 features extracted for this request. Used for retraining.</span></div>
+      <div class="sf"><span class="fn">predicted_tier</span><span class="ft">INT</span><span class="fd">XGBoost prediction (0-3)</span></div>
+      <div class="sf"><span class="fn">routed_tier</span><span class="ft">INT</span><span class="fd">Actual tier used (may differ from predicted due to override rules)</span></div>
+      <div class="sf"><span class="fn">classifier_confidence</span><span class="ft">FLOAT</span><span class="fd">Calibrated probability of predicted tier</span></div>
+      <div class="sf"><span class="fn">model_version</span><span class="ft">VARCHAR</span><span class="fd">MLflow model version. Enables per-version performance analysis.</span></div>
+      <div class="sf"><span class="fn">input_tokens</span><span class="ft">INT</span><span class="fd">Actual tokens consumed (vs predicted)</span></div>
+      <div class="sf"><span class="fn">output_tokens</span><span class="ft">INT</span><span class="fd">Actual output tokens</span></div>
+      <div class="sf"><span class="fn">cost_usd</span><span class="ft">FLOAT</span><span class="fd">Exact cost of this request at current pricing</span></div>
+      <div class="sf"><span class="fn">latency_ms</span><span class="ft">INT</span><span class="fd">End-to-end latency including routing overhead</span></div>
+      <div class="sf"><span class="fn">quality_score</span><span class="ft">FLOAT</span><span class="fd">Judge model score [0,1]. NULL until async judge completes.</span></div>
+      <div class="sf"><span class="fn">routing_overhead_ms</span><span class="ft">INT</span><span class="fd">Time spent in feature extraction + classifier. Target: &lt;100ms.</span></div>
+      <div class="sf"><span class="fn">created_at</span><span class="ft">TIMESTAMPTZ</span><span class="fd">Request timestamp</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="doc-section" id="gateway">
+  <div class="section-header"><span class="section-num">07</span><h2 class="section-title">Gateway architecture</h2></div>
+  <h3>FastAPI middleware design</h3>
+  <pre><code><span class="k">from</span> fastapi <span class="k">import</span> FastAPI, Request, Response
+<span class="k">from</span> fastapi.middleware.base <span class="k">import</span> BaseHTTPMiddleware
+<span class="k">import</span> time
+
+<span class="k">class</span> <span class="f">RouterMiddleware</span>(BaseHTTPMiddleware):
+    <span class="k">async def</span> <span class="f">dispatch</span>(self, request: Request, call_next) -> Response:
+        start = time.<span class="f">perf_counter</span>()
+
+        <span class="c"># 1. Parse request</span>
+        body = <span class="k">await</span> request.<span class="f">json</span>()
+        query = body.<span class="f">get</span>(<span class="s">"messages"</span>, [{}])[-<span class="num">1</span>].<span class="f">get</span>(<span class="s">"content"</span>, <span class="s">""</span>)
+        context = body.<span class="f">get</span>(<span class="s">"system"</span>, <span class="s">""</span>)
+
+        <span class="c"># 2. Check cache (Redis) — identical queries return cached response</span>
+        cache_key = <span class="f">f"response:{sha256(query)}"</span>
+        cached = <span class="k">await</span> redis.<span class="f">get</span>(cache_key)
+        <span class="k">if</span> cached:
+            <span class="f">record_cache_hit</span>(query)
+            <span class="k">return</span> <span class="f">JSONResponse</span>(<span class="f">json</span>.<span class="f">loads</span>(cached))
+
+        <span class="c"># 3. Route — feature extraction + classification</span>
+        decision = classifier.<span class="f">predict_with_confidence</span>(query, context)
+        target_model = TIER_TO_MODEL[decision.tier]
+
+        <span class="c"># 4. Rewrite request to target model endpoint</span>
+        body[<span class="s">"model"</span>] = target_model
+        request._body = <span class="f">json</span>.<span class="f">dumps</span>(body).<span class="f">encode</span>()
+
+        <span class="c"># 5. Execute request</span>
+        response = <span class="k">await</span> <span class="f">call_next</span>(request)
+        routing_ms = <span class="f">int</span>((time.<span class="f">perf_counter</span>() - start) * <span class="num">1000</span>)
+
+        <span class="c"># 6. Log + async quality judge (non-blocking)</span>
+        asyncio.<span class="f">create_task</span>(<span class="f">log_and_judge</span>(query, response, decision, routing_ms))
+
+        <span class="k">return</span> response</code></pre>
+
+  <h3>Circuit breaker for model tiers</h3>
+  <p>If a model tier starts returning errors (5xx, timeouts), the circuit breaker escalates to the next tier automatically. This prevents a Groq outage from cascading into user-facing failures.</p>
+  <pre><code><span class="k">from</span> circuitbreaker <span class="k">import</span> circuit
+
+<span class="k">@circuit</span>(failure_threshold=<span class="num">5</span>, recovery_timeout=<span class="num">30</span>, expected_exception=APIError)
+<span class="k">async def</span> <span class="f">call_tier_0</span>(body): <span class="k">return await</span> groq_client.<span class="f">invoke</span>(body)
+
+<span class="k">@circuit</span>(failure_threshold=<span class="num">3</span>, recovery_timeout=<span class="num">60</span>, expected_exception=APIError)
+<span class="k">async def</span> <span class="f">call_tier_1</span>(body): <span class="k">return await</span> haiku_client.<span class="f">invoke</span>(body)
+
+<span class="k">async def</span> <span class="f">route_with_fallback</span>(body, tier):
+    callers = [call_tier_0, call_tier_1, call_tier_2, call_tier_3]
+    <span class="k">for</span> t <span class="k">in</span> <span class="f">range</span>(tier, <span class="num">4</span>):
+        <span class="k">try</span>:
+            <span class="k">return await</span> callers[t](body), t
+        <span class="k">except</span> CircuitBreakerOpen:
+            <span class="k">continue</span>  <span class="c"># escalate to next tier</span>
+    <span class="k">raise</span> AllTiersUnavailableError()</code></pre>
+</div>
+
+<div class="doc-section" id="storage">
+  <div class="section-header"><span class="section-num">08</span><h2 class="section-title">Storage design</h2></div>
+  <h3>PostgreSQL schema</h3>
+  <pre><code><span class="c">-- Core routing log (see Section 06 for full schema)</span>
+<span class="c">-- Additional tables:</span>
+
+<span class="k">CREATE TABLE</span> model_tier_performance (
+    tier            INT,
+    date            DATE,
+    query_count     INT,
+    avg_quality     FLOAT,
+    p95_latency_ms  INT,
+    total_cost_usd  FLOAT,
+    cost_per_query  FLOAT,
+    <span class="k">PRIMARY KEY</span> (tier, date)
+);
+
+<span class="k">CREATE TABLE</span> routing_feedback (
+    request_id      UUID <span class="k">REFERENCES</span> routing_log(request_id),
+    feedback_source VARCHAR(<span class="num">20</span>),  <span class="c">-- 'judge_model', 'user_signal', 'counterfactual'</span>
+    quality_score   FLOAT,
+    issues          JSONB,
+    optimal_tier    INT,           <span class="c">-- minimum tier that achieves quality >= threshold</span>
+    created_at      TIMESTAMPTZ <span class="k">DEFAULT NOW</span>()
+);
+
+<span class="k">CREATE TABLE</span> classifier_versions (
+    version_id      VARCHAR(<span class="num">50</span>) <span class="k">PRIMARY KEY</span>,  <span class="c">-- MLflow run ID</span>
+    accuracy        FLOAT,
+    cost_savings_vs_baseline FLOAT,
+    training_samples INT,
+    deployed_at     TIMESTAMPTZ,
+    retired_at      TIMESTAMPTZ
+);
+
+<span class="c">-- Materialized view: daily cost savings report</span>
+<span class="k">CREATE MATERIALIZED VIEW</span> daily_savings <span class="k">AS</span>
+<span class="k">SELECT</span>
+    date,
+    <span class="k">SUM</span>(cost_usd) <span class="k">AS</span> actual_cost,
+    <span class="k">SUM</span>(input_tokens * <span class="num">0.015</span> / <span class="num">1000</span> + output_tokens * <span class="num">0.075</span> / <span class="num">1000</span>) <span class="k">AS</span> opus_cost_baseline,
+    <span class="num">1</span> - <span class="k">SUM</span>(cost_usd) / <span class="k">SUM</span>(input_tokens * <span class="num">0.015</span>/<span class="num">1000</span> + output_tokens * <span class="num">0.075</span>/<span class="num">1000</span>) <span class="k">AS</span> savings_pct
+<span class="k">FROM</span> routing_log
+<span class="k">GROUP BY</span> date;</code></pre>
+</div>
+
+<div class="doc-section" id="monitoring">
+  <div class="section-header"><span class="section-num">09</span><h2 class="section-title">Monitoring & LLMOps</h2></div>
+  <h3>Prometheus metrics</h3>
+  <table>
+    <tr><th>Metric</th><th>Type</th><th>Alert condition</th></tr>
+    <tr><td><span class="ic">router_routing_overhead_p99_ms</span></td><td>Histogram</td><td>Alert if P99 &gt; 150ms (target: &lt;100ms)</td></tr>
+    <tr><td><span class="ic">router_tier_distribution</span></td><td>Counter (by tier)</td><td>Alert if Tier 3 fraction exceeds 20%</td></tr>
+    <tr><td><span class="ic">router_classifier_confidence_mean</span></td><td>Gauge</td><td>Alert if mean confidence drops below 0.60 (model drift)</td></tr>
+    <tr><td><span class="ic">router_quality_score_rolling_24h</span></td><td>Gauge</td><td>Alert if rolling mean drops below 0.70</td></tr>
+    <tr><td><span class="ic">router_cost_usd_per_hour</span></td><td>Gauge</td><td>Alert if hourly cost exceeds budget threshold</td></tr>
+    <tr><td><span class="ic">router_cache_hit_rate</span></td><td>Gauge</td><td>Alert if hit rate drops below 15% (Redis cold)</td></tr>
+    <tr><td><span class="ic">router_circuit_breaker_state</span></td><td>Gauge (by tier)</td><td>Alert immediately if any tier circuit opens</td></tr>
+    <tr><td><span class="ic">router_feedback_lag_hours</span></td><td>Gauge</td><td>Alert if judge model feedback is &gt;2hrs delayed</td></tr>
+  </table>
+
+  <h3>Classifier drift detection</h3>
+  <p>The feature distribution of production queries shifts over time as users' needs evolve. Detect this using Population Stability Index (PSI) — a metric used in credit risk modeling to detect covariate shift:</p>
+  <div class="formula">
+    <div class="fl">Population Stability Index (PSI)</div>
+    PSI = Σ (Actual% - Expected%) × ln(Actual% / Expected%)
+    <br/>
+    PSI &lt; 0.1 → stable (no retraining needed)
+    <br/>
+    PSI 0.1–0.2 → minor shift (monitor)
+    <br/>
+    PSI &gt; 0.2 → significant shift → trigger immediate retraining
+  </div>
+  <p>Compute PSI weekly over the top-5 most important features. A PSI spike means the classifier was trained on a different query distribution than it's now seeing — its accuracy estimates are unreliable.</p>
+</div>
+
+<div class="doc-section" id="api">
+  <div class="section-header"><span class="section-num">10</span><h2 class="section-title">API design</h2></div>
+  <pre><code><span class="c"># The router is a drop-in replacement for any LLM API</span>
+<span class="c"># Just change the base_url in your existing client</span>
+
+<span class="c"># Before: direct to Claude</span>
+client = anthropic.<span class="f">Anthropic</span>(base_url=<span class="s">"https://api.anthropic.com"</span>)
+
+<span class="c"># After: route through Cognitive Load Router</span>
+client = anthropic.<span class="f">Anthropic</span>(base_url=<span class="s">"https://your-router.internal/v1"</span>)
+
+<span class="c"># The router exposes the same API surface as Claude/OpenAI</span>
+<span class="c"># Zero code changes in calling applications</span>
+
+<span class="c"># Additional management endpoints:</span>
+<span class="k">GET</span>  /router/metrics             <span class="c"># Real-time routing stats</span>
+<span class="k">GET</span>  /router/cost-report         <span class="c"># Daily/weekly cost savings breakdown</span>
+<span class="k">GET</span>  /router/classifier/version  <span class="c"># Current model version + accuracy</span>
+<span class="k">POST</span> /router/classifier/retrain  <span class="c"># Trigger manual retraining</span>
+<span class="k">GET</span>  /router/tiers/status        <span class="c"># Circuit breaker state per tier</span>
+<span class="k">POST</span> /router/config              <span class="c"># Update COST_WEIGHT and thresholds live</span>
+<span class="k">GET</span>  /router/query/{id}/debug    <span class="c"># Full routing trace for a specific request</span></code></pre>
+</div>
+
+<div class="doc-section" id="roadmap">
+  <div class="section-header"><span class="section-num">11</span><h2 class="section-title">Implementation roadmap</h2></div>
+  <div class="phase">
+    <div class="phase-header"><div class="pl">Phase 1</div><div class="pt">Feature extraction + rule-based router</div><div class="ptm">Week 1</div></div>
+    <ul><li>Implement all 28 feature extractors — unit test each one with 10 example queries</li><li>Build rule-based classifier (no ML yet) using the feature importance table</li><li>FastAPI gateway that rewrites requests to the correct model tier</li><li>PostgreSQL routing_log table + basic cost tracking</li><li><strong>Deliverable:</strong> Working router, rule-based, with cost logging. No ML yet but functional.</li></ul>
+  </div>
+  <div class="phase">
+    <div class="phase-header"><div class="pl">Phase 2</div><div class="pt">XGBoost classifier + bootstrap training data</div><div class="ptm">Week 2</div></div>
+    <ul><li>Run 2,000 queries through all four tiers, collect quality scores via judge model</li><li>Train XGBoost on rule-based labels + judge scores</li><li>Platt scaling calibration on held-out set</li><li>Redis caching for repeated queries</li><li>MLflow experiment tracking setup</li><li><strong>Deliverable:</strong> ML-based router with ~70% tier accuracy, cost savings visible in logs</li></ul>
+  </div>
+  <div class="phase">
+    <div class="phase-header"><div class="pl">Phase 3</div><div class="pt">Feedback loop + auto-retraining</div><div class="ptm">Week 3</div></div>
+    <ul><li>Async judge model integration (non-blocking quality scoring)</li><li>Behavioral signal collection (follow-up detection, retry detection)</li><li>Weekly retraining Airflow DAG</li><li>A/B testing framework for model deployment</li><li>PSI drift detection</li><li><strong>Deliverable:</strong> Self-improving router. Accuracy improves weekly without human intervention.</li></ul>
+  </div>
+  <div class="phase">
+    <div class="phase-header"><div class="pl">Phase 4</div><div class="pt">Monitoring, dashboards, production hardening</div><div class="ptm">Week 4</div></div>
+    <ul><li>Prometheus metrics + Grafana cost dashboard</li><li>Circuit breaker for all model tiers</li><li>COST_WEIGHT live tuning endpoint</li><li>Docker Compose full system, GitHub Actions CI</li><li><strong>Deliverable:</strong> Production-ready system with cost savings quantified on the Grafana dashboard</li></ul>
+  </div>
+</div>
+
+<div class="doc-section" id="research">
+  <div class="section-header"><span class="section-num">12</span><h2 class="section-title">Research contributions</h2></div>
+  <div class="contribution">
+    <h4>The 4-dimensional complexity model</h4>
+    <p>Decomposing query complexity into reasoning depth, knowledge breadth, instruction precision, and tool dependency — with empirically validated feature proxies for each — is a formal contribution to the LLM routing literature. Publishable as a short paper at EMNLP or ACL System Demonstrations.</p>
+  </div>
+  <div class="contribution">
+    <h4>Online learning router benchmark</h4>
+    <p>The counterfactual sampling methodology (running 2% of queries through all tiers in shadow mode) generates a continuous routing accuracy benchmark that other teams can replicate. Releasing this benchmark enables the research community to evaluate routing systems comparably.</p>
+  </div>
+  <div class="contribution">
+    <h4>PSI for LLM query drift</h4>
+    <p>Applying Population Stability Index — a concept from credit risk modeling — to detect distributional shift in LLM query patterns is a novel cross-domain application. The PSI thresholds calibrated for LLM routing retraining triggers are a practical contribution.</p>
+  </div>
+</div>
+
+<div class="doc-section" id="failure">
+  <div class="section-header"><span class="section-num">13</span><h2 class="section-title">Failure modes & mitigations</h2></div>
+  <table>
+    <tr><th>Failure mode</th><th>Impact</th><th>Mitigation</th></tr>
+    <tr><td>Classifier under-routes (sends complex query to Tier 0)</td><td>Low-quality response reaches user</td><td>Conservative confidence threshold (0.65): uncertain predictions escalate one tier. Judge model detects quality failure and labels for retraining.</td></tr>
+    <tr><td>Classifier over-routes (sends simple query to Tier 3)</td><td>Unnecessary cost</td><td>Counterfactual sampling identifies over-routing. PSI alerts on distribution shift.</td></tr>
+    <tr><td>Judge model itself gives wrong quality scores</td><td>Corrupted training labels</td><td>Human spot-check 50 judge scores weekly. If inter-rater agreement with human &lt; 0.7, flag the judge model for prompt revision.</td></tr>
+    <tr><td>Redis cache returns stale response for updated queries</td><td>Outdated answer served</td><td>Cache key includes query hash + context hash. TTL = 24 hours. Explicit cache invalidation API for known document updates.</td></tr>
+    <tr><td>All four tiers simultaneously unavailable</td><td>Complete service failure</td><td>Circuit breaker triggers fallback to a local Ollama instance. Degraded quality but zero downtime.</td></tr>
+    <tr><td>Feature extraction spaCy crash on unusual Unicode</td><td>Gateway exception, request dropped</td><td>Try/except around all feature extractors. On failure: use fallback feature vector (all zeros) → routes to Tier 2 (safe default).</td></tr>
+  </table>
+</div>
+
+<div class="divider"></div>
+<p style="font-size:12px;color:var(--ink3);text-align:center;padding-bottom:24px">Cognitive Load Router · Technical Specification v1.0 · XGBoost + FastAPI + MLflow + Prometheus + Grafana</p>
+</main>
+<script>
+const links=document.querySelectorAll('#sidebar a');
+const sections=document.querySelectorAll('.doc-section');
+const obs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){links.forEach(l=>l.classList.remove('active'));const a=document.querySelector(`#sidebar a[href="#${x.target.id}"]`);if(a)a.classList.add('active')}})},{rootMargin:'-20% 0px -70% 0px'});
+sections.forEach(s=>obs.observe(s));
+</script>
+</body>
+</html>

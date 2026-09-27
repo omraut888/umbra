@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Latent Coverage Cartographer — Full Technical Specification</title>
+<style>
+:root{
+  --ink:#0f0f0f;--ink2:#3a3a3a;--ink3:#6b6b6b;
+  --bg:#fafaf8;--surface:#ffffff;--surface2:#f4f3f0;
+  --border:#e2e0db;--border2:#ccc9c2;
+  --accent:#1e40af;--accent2:#2563eb;--accent-light:#dbeafe;
+  --amber:#92400e;--amber-light:#fef3c7;
+  --red:#991b1b;--red-light:#fee2e2;
+  --green:#065f46;--green-light:#d1fae5;
+  --purple:#4c1d95;--purple-light:#ede9fe;
+  --code-bg:#1e1e2e;--code-fg:#cdd6f4;
+  --mono:'JetBrains Mono','Fira Code',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);display:flex;min-height:100vh;font-size:15px;line-height:1.7}
+nav#sidebar{width:256px;min-width:256px;background:#1e40af;color:#dbeafe;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;padding:0 0 40px;z-index:100}
+nav#sidebar .brand{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,.12)}
+nav#sidebar .brand h1{font-size:16px;font-weight:700;color:#fff;letter-spacing:-.2px;line-height:1.3}
+nav#sidebar .brand p{font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;font-family:var(--mono)}
+nav#sidebar ul{list-style:none;padding:10px 0}
+nav#sidebar ul li a{display:block;padding:7px 20px;font-size:12px;color:rgba(255,255,255,.65);text-decoration:none;border-left:2px solid transparent;transition:all .15s}
+nav#sidebar ul li a:hover,nav#sidebar ul li a.active{color:#fff;border-left-color:#93c5fd;background:rgba(255,255,255,.07)}
+nav#sidebar .nav-section{font-size:10px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.3);text-transform:uppercase;padding:14px 20px 4px}
+main{margin-left:256px;flex:1;padding:48px 64px 96px;max-width:960px}
+.page-header{margin-bottom:48px;padding-bottom:32px;border-bottom:1px solid var(--border)}
+.page-header .eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;color:var(--accent2);text-transform:uppercase;margin-bottom:12px}
+.page-header h1{font-size:36px;font-weight:800;letter-spacing:-1px;color:var(--ink);line-height:1.1;margin-bottom:12px}
+.page-header .subtitle{font-size:17px;color:var(--ink2);line-height:1.6;max-width:680px}
+.doc-section{margin-bottom:60px;scroll-margin-top:32px}
+.section-header{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
+.section-num{font-size:11px;font-weight:700;color:var(--accent2);font-family:var(--mono);min-width:28px}
+h2.section-title{font-size:24px;font-weight:700;color:var(--ink);letter-spacing:-.3px}
+h3{font-size:16px;font-weight:600;color:var(--ink);margin:28px 0 10px}
+h4{font-size:13px;font-weight:600;color:var(--ink2);margin:18px 0 7px;text-transform:uppercase;letter-spacing:.05em}
+p{color:var(--ink2);margin-bottom:12px;line-height:1.75}
+ul,ol{margin:8px 0 14px 20px;color:var(--ink2)}
+li{margin-bottom:5px;line-height:1.65}
+strong{color:var(--ink);font-weight:600}
+.callout{border-radius:8px;padding:16px 18px;margin:18px 0;border-left:3px solid}
+.callout.insight{background:var(--accent-light);border-color:var(--accent2)}
+.callout.insight .cl{color:var(--accent2)}
+.callout.warn{background:var(--amber-light);border-color:var(--amber)}
+.callout.warn .cl{color:var(--amber)}
+.callout.success{background:var(--green-light);border-color:var(--green)}
+.callout.success .cl{color:var(--green)}
+.callout.danger{background:var(--red-light);border-color:var(--red)}
+.callout.danger .cl{color:var(--red)}
+.cl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.callout p{margin:0;font-size:13px;line-height:1.65}
+pre{background:var(--code-bg);border-radius:8px;padding:20px;overflow-x:auto;margin:14px 0;font-size:12px;line-height:1.65}
+code{color:var(--code-fg);font-family:var(--mono)}
+.ic{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:var(--mono);font-size:12px;color:var(--accent2)}
+.formula{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:18px 24px;margin:16px 0;text-align:center;font-family:var(--mono);font-size:13px;color:var(--ink);line-height:2}
+.formula .fl{font-size:11px;color:var(--ink3);font-family:var(--sans);margin-bottom:8px;text-align:left;font-weight:600;letter-spacing:.04em}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0}
+th{background:var(--surface2);color:var(--ink);font-weight:600;padding:10px 14px;text-align:left;border:1px solid var(--border)}
+td{padding:9px 14px;border:1px solid var(--border);color:var(--ink2);vertical-align:top}
+tr:nth-child(even) td{background:var(--surface2)}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;margin:2px 3px 2px 0;letter-spacing:.03em}
+.b-blue{background:var(--accent-light);color:var(--accent2)}
+.b-amber{background:var(--amber-light);color:var(--amber)}
+.b-green{background:var(--green-light);color:var(--green)}
+.b-purple{background:var(--purple-light);color:var(--purple)}
+.b-red{background:var(--red-light);color:var(--red)}
+.schema-block{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:14px 0}
+.schema-header{background:var(--surface2);padding:10px 16px;font-size:12px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--border);font-family:var(--mono)}
+.schema-body{padding:14px 16px}
+.sf{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.sf:last-child{border-bottom:none}
+.fn{font-family:var(--mono);color:var(--accent2);min-width:160px;font-weight:500}
+.ft{color:var(--green);min-width:100px;font-family:var(--mono)}
+.fd{color:var(--ink3);flex:1}
+.phase{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin:10px 0}
+.phase-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.pl{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--accent2);text-transform:uppercase}
+.pt{font-size:14px;font-weight:600;color:var(--ink)}
+.ptm{font-size:11px;color:var(--ink3);margin-left:auto;font-family:var(--mono)}
+.zone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.zone-card{border-radius:10px;padding:14px 16px;border:1px solid var(--border)}
+.contribution{background:linear-gradient(135deg,var(--accent-light),#eff6ff);border:1px solid #93c5fd;border-radius:10px;padding:20px 22px;margin:12px 0}
+.contribution h4{color:var(--accent2);margin:0 0 6px;font-size:14px}
+.contribution p{font-size:13px;margin:0;color:var(--ink2)}
+.divider{height:1px;background:var(--border);margin:40px 0}
+.k{color:#cba6f7}.s{color:#a6e3a1}.c{color:#6c7086;font-style:italic}.n{color:#89b4fa}.f{color:#89dceb}.o{color:#f38ba8}.num{color:#fab387}
+</style>
+</head>
+<body>
+<nav id="sidebar">
+  <div class="brand">
+    <h1>Latent Coverage Cartographer</h1>
+    <p>Full Technical Specification</p>
+  </div>
+  <ul>
+    <li class="nav-section">Foundation</li>
+    <li><a href="#thesis">1. Thesis & problem</a></li>
+    <li><a href="#architecture">2. System architecture</a></li>
+    <li class="nav-section">Core Pipeline</li>
+    <li><a href="#probe">3. Synthetic probe generation</a></li>
+    <li><a href="#scoring">4. Coverage scoring formula</a></li>
+    <li><a href="#clustering">5. UMAP + HDBSCAN clustering</a></li>
+    <li><a href="#darkzones">6. Dark zone classification</a></li>
+    <li><a href="#recommendations">7. Document recommendations</a></li>
+    <li class="nav-section">Infrastructure</li>
+    <li><a href="#storage">8. Storage design</a></li>
+    <li><a href="#visualization">9. Visualization layer</a></li>
+    <li><a href="#eval">10. Evaluating the Cartographer</a></li>
+    <li><a href="#integration">11. RAG system integration</a></li>
+    <li class="nav-section">Build Plan</li>
+    <li><a href="#roadmap">12. Implementation roadmap</a></li>
+    <li><a href="#research">13. Research contributions</a></li>
+    <li><a href="#failure">14. Failure modes</a></li>
+  </ul>
+</nav>
+<main>
+<div class="page-header">
+  <div class="eyebrow">Technical Specification · v1.0</div>
+  <h1>Latent Coverage Cartographer</h1>
+  <p class="subtitle">Maps the blind spots of any RAG system before users find them. Generates synthetic probe queries, scores retrieval coverage, clusters failures into dark zones, and produces a structured gap report with document recommendations.</p>
+  <div style="margin-top:16px">
+    <span class="badge b-blue">UMAP + HDBSCAN</span>
+    <span class="badge b-green">Synthetic query generation</span>
+    <span class="badge b-amber">Coverage scoring formula</span>
+    <span class="badge b-purple">Plotly Dash visualization</span>
+    <span class="badge b-blue">RAG-agnostic connector</span>
+  </div>
+</div>
+
+<div class="doc-section" id="thesis">
+  <div class="section-header"><span class="section-num">01</span><h2 class="section-title">Thesis & problem</h2></div>
+  <p>Every RAG system has a coverage boundary — a frontier beyond which it can no longer answer reliably. Inside the boundary: good retrieval, grounded answers. Outside it: the system retrieves tangentially related chunks, generates confidently-phrased hallucinations, and neither the system nor the user has any way to know.</p>
+  <div class="callout insight">
+    <div class="cl">The core problem</div>
+    <p>RAG systems don't fail loudly at coverage boundaries. They don't say "I don't have information about this." They say "Based on the available context..." and then hallucinate fluently. The failure mode is invisible — to the user, to the developer, and to any standard RAG evaluation metric that only measures answer quality on queries the system can handle.</p>
+  </div>
+
+  <h3>Three types of coverage failure</h3>
+  <table>
+    <tr><th>Type</th><th>What it looks like</th><th>Why it's hard to detect</th></tr>
+    <tr><td>Absolute gap</td><td>Topic X has zero documents in the KB. Any query about X retrieves irrelevant chunks.</td><td>System returns confident-sounding answers from tangentially related documents.</td></tr>
+    <tr><td>Thin coverage</td><td>One document covers topic X, but it's a 2-sentence mention in a larger document. Queries need more depth than exists.</td><td>Retrieval succeeds (document is found) but the answer is incomplete. Hard to distinguish from adequate coverage.</td></tr>
+    <tr><td>Stale coverage</td><td>Documents exist but are outdated. Retrieval finds them, answers are confidently wrong.</td><td>Covered by the Knowledge Decay Monitor (Project 16), not the Cartographer. Out of scope here.</td></tr>
+  </table>
+
+  <h3>Why existing tools don't solve this</h3>
+  <p>RAGAS, TruLens, and DeepEval all evaluate RAG quality on <em>queries you provide</em>. They tell you how well the system answers the queries it's given. None of them tell you what queries the system <em>can't</em> answer — because generating those queries requires exploring the space of possible questions, not just scoring answers to known ones. The Cartographer is the first tool to treat coverage mapping as an exploration problem rather than an evaluation problem.</p>
+</div>
+
+<div class="doc-section" id="architecture">
+  <div class="section-header"><span class="section-num">02</span><h2 class="section-title">System architecture</h2></div>
+  <p>Five sequential stages. Each stage has a clear contract with the next. The output of Stage 5 is a structured gap report consumed by the developer or platform team.</p>
+  <pre><code>Stage 1: Probe Query Generator
+  Input:  Knowledge base (documents/chunks)
+  Output: N synthetic probe queries (5,000–50,000 depending on KB size)
+
+Stage 2: Coverage Scorer
+  Input:  Probe queries + RAG system under test
+  Output: (query, coverage_score, retrieval_evidence) for each probe
+
+Stage 3: UMAP Projector
+  Input:  Query embeddings for all probes
+  Output: 2D coordinates for each probe query
+
+Stage 4: HDBSCAN Clusterer
+  Input:  2D UMAP coordinates
+  Output: Cluster assignments + noise labels
+
+Stage 5: Gap Analyzer & Report Generator
+  Input:  Cluster assignments + coverage scores
+  Output: Structured GapReport with dark zones, recommendations, priority scores</code></pre>
+
+  <div class="callout insight">
+    <div class="cl">Design principle: RAG-agnostic</div>
+    <p>The Cartographer never calls the RAG system's internal components directly. It only calls the public query interface — the same API your users call. This makes it compatible with any RAG system: Qdrant-based, Pinecone-based, LlamaIndex, LangChain, custom. You point it at a URL and it works.</p>
+  </div>
+</div>
+
+<div class="doc-section" id="probe">
+  <div class="section-header"><span class="section-num">03</span><h2 class="section-title">Synthetic probe query generation</h2></div>
+  <p>This is where the Cartographer's intellectual depth lies. Generating probe queries that genuinely test coverage requires four distinct generation strategies running in parallel. Using only one strategy produces a biased probe set that misses entire categories of gaps.</p>
+
+  <h3>Strategy 1: Taxonomy-guided generation (covers the KB)</h3>
+  <pre><code><span class="k">async def</span> <span class="f">taxonomy_guided_generation</span>(kb_chunks: List[str], n: int = <span class="num">2000</span>) -> List[str]:
+    <span class="c"># Step 1: Extract topic taxonomy from KB using BERTopic</span>
+    topic_model = <span class="f">BERTopic</span>(embedding_model=<span class="s">"all-MiniLM-L6-v2"</span>, nr_topics=<span class="num">50</span>)
+    topics, probs = topic_model.<span class="f">fit_transform</span>(kb_chunks)
+    topic_info = topic_model.<span class="f">get_topic_info</span>()
+
+    <span class="c"># Step 2: Generate N/topics queries per topic cluster</span>
+    queries = []
+    <span class="k">for</span> topic_id, topic_keywords <span class="k">in</span> topic_info.<span class="f">iterrows</span>():
+        prompt = <span class="f">f"""
+Generate 5 factual questions that test knowledge of: {topic_keywords['Name']}
+These questions should be answerable from a knowledge base on this topic.
+Return only the questions, one per line. No numbering, no explanation.
+Vary: factual lookup, comparison, causal, procedural, definitional.
+"""</span>
+        result = <span class="k">await</span> claude_haiku.<span class="f">ainvoke</span>(prompt)
+        queries.<span class="f">extend</span>(result.<span class="f">strip</span>().<span class="f">split</span>(<span class="s">"\n"</span>))
+    <span class="k">return</span> queries</code></pre>
+
+  <h3>Strategy 2: HyDE-based adversarial generation (probes the boundary)</h3>
+  <p>HyDE (Hypothetical Document Embeddings) is normally used to improve retrieval. Here it's inverted: generate hypothetical documents about topics that <em>should</em> be in the KB but might not be, then generate queries against those hypothetical documents. This probes the frontier of coverage.</p>
+  <pre><code><span class="k">async def</span> <span class="f">adversarial_boundary_generation</span>(kb_chunks: List[str], n: int = <span class="num">1000</span>) -> List[str]:
+    <span class="c"># Generate "adjacent topic" documents — related to KB content but not in it</span>
+    sample_chunks = random.<span class="f">sample</span>(kb_chunks, min(<span class="num">100</span>, <span class="f">len</span>(kb_chunks)))
+    adjacent_topics_prompt = <span class="f">f"""
+Given these document excerpts from a knowledge base:
+{chr(10).join(sample_chunks[:10])}
+
+Generate 20 related topics that are NOT covered by these excerpts but are
+closely adjacent to them. These are the "boundary topics" — things a user
+might naturally ask about after reading this content.
+
+Return only topic names, one per line.
+"""</span>
+    adjacent_topics = <span class="k">await</span> claude_haiku.<span class="f">ainvoke</span>(adjacent_topics_prompt)
+
+    <span class="c"># For each adjacent topic, generate probe queries</span>
+    queries = []
+    <span class="k">for</span> topic <span class="k">in</span> adjacent_topics.<span class="f">strip</span>().<span class="f">split</span>(<span class="s">"\n"</span>):
+        probe_prompt = <span class="f">f"Generate 3 specific questions about: {topic}"</span>
+        result = <span class="k">await</span> claude_haiku.<span class="f">ainvoke</span>(probe_prompt)
+        queries.<span class="f">extend</span>(result.<span class="f">strip</span>().<span class="f">split</span>(<span class="s">"\n"</span>))
+    <span class="k">return</span> queries</code></pre>
+
+  <h3>Strategy 3: Counterfactual generation (probes reasoning gaps)</h3>
+  <p>Takes existing KB chunks and generates queries that <em>seem</em> answerable from the KB but actually require information not present. Tests whether the system hallucinates or correctly expresses uncertainty.</p>
+  <pre><code><span class="k">async def</span> <span class="f">counterfactual_generation</span>(kb_chunks: List[str], n: int = <span class="num">500</span>) -> List[str]:
+    <span class="c"># For each sampled chunk, generate queries that require ONE piece of</span>
+    <span class="c"># information not in the chunk — tests hallucination on near-misses</span>
+    queries = []
+    <span class="k">for</span> chunk <span class="k">in</span> random.<span class="f">sample</span>(kb_chunks, n):
+        prompt = <span class="f">f"""
+Given this document excerpt:
+"{chunk}"
+
+Generate 2 questions that seem related to this content but require
+information NOT contained in it to answer correctly.
+The questions should be specific and factual.
+Return only the questions, one per line.
+"""</span>
+        result = <span class="k">await</span> claude_haiku.<span class="f">ainvoke</span>(prompt)
+        queries.<span class="f">extend</span>(result.<span class="f">strip</span>().<span class="f">split</span>(<span class="s">"\n"</span>))
+    <span class="k">return</span> queries</code></pre>
+
+  <h3>Strategy 4: User pattern simulation (probes real-world gaps)</h3>
+  <p>If you have query logs from your RAG system, cluster them and identify query patterns that cluster near high-hallucination responses. Generate synthetic variants of those patterns to stress-test the coverage around known weak spots.</p>
+  <pre><code><span class="k">async def</span> <span class="f">user_pattern_simulation</span>(query_logs: List[str], n: int = <span class="num">500</span>) -> List[str]:
+    <span class="c"># Cluster historical queries, identify clusters with high hallucination rate</span>
+    embeddings = <span class="f">embed_batch</span>(query_logs)
+    clusters = <span class="f">hdbscan_cluster</span>(embeddings)
+    high_hallucination_clusters = [
+        c <span class="k">for</span> c <span class="k">in</span> clusters
+        <span class="k">if</span> c.avg_hallucination_score > <span class="num">0.6</span>
+    ]
+    <span class="c"># Generate synthetic variants around problematic clusters</span>
+    <span class="k">return await</span> <span class="f">generate_cluster_variants</span>(high_hallucination_clusters, n)</code></pre>
+
+  <h3>Probe set composition</h3>
+  <table>
+    <tr><th>Strategy</th><th>Share of probe set</th><th>What it finds</th></tr>
+    <tr><td>Taxonomy-guided</td><td>40%</td><td>Absolute gaps: topics with zero coverage</td></tr>
+    <tr><td>HyDE adversarial</td><td>30%</td><td>Boundary gaps: topics adjacent to KB but not in it</td></tr>
+    <tr><td>Counterfactual</td><td>20%</td><td>Reasoning gaps: queries that look answerable but require missing context</td></tr>
+    <tr><td>User pattern</td><td>10%</td><td>Operational gaps: known weak spots from production query logs</td></tr>
+  </table>
+</div>
+
+<div class="doc-section" id="scoring">
+  <div class="section-header"><span class="section-num">04</span><h2 class="section-title">Coverage scoring formula</h2></div>
+  <p>For each probe query, a coverage score is computed from three independent signals. The score represents "how well can this RAG system answer this type of question?" — not whether any specific answer is correct.</p>
+
+  <div class="formula">
+    <div class="fl">Coverage Score — composite of three retrieval signals</div>
+    CS(q, KB) = α·RC(q,KB) + β·(1 − SE(q,KB)) + γ·(1 − HP(q,KB))
+    <br/><br/>
+    where:
+    <br/>RC = Retrieval Confidence (max cosine similarity of top-k chunks to query)
+    <br/>SE = Semantic Entropy (entropy of retrieved chunk embedding distribution)
+    <br/>HP = Hallucination Probability (cross-encoder relevance gap score)
+    <br/><br/>
+    Default weights: α=0.4, β=0.35, γ=0.25 (tunable per deployment)
+  </div>
+
+  <h3>Signal 1: Retrieval Confidence (RC)</h3>
+  <p>The maximum cosine similarity between the query embedding and the top-k retrieved chunk embeddings. High RC = the system found highly relevant chunks. Low RC = the system retrieved tangentially related content — coverage failure signal.</p>
+  <pre><code><span class="k">def</span> <span class="f">retrieval_confidence</span>(query: str, retrieved_chunks: List[str]) -> float:
+    query_emb = <span class="f">embed</span>(query)
+    chunk_embs = [<span class="f">embed</span>(c) <span class="k">for</span> c <span class="k">in</span> retrieved_chunks]
+    similarities = [<span class="f">cosine_similarity</span>(query_emb, ce) <span class="k">for</span> ce <span class="k">in</span> chunk_embs]
+    <span class="k">return</span> <span class="f">max</span>(similarities) <span class="k">if</span> similarities <span class="k">else</span> <span class="num">0.0</span></code></pre>
+
+  <h3>Signal 2: Semantic Entropy (SE)</h3>
+  <p>The Shannon entropy of the retrieved chunk embedding distribution. Low entropy = all retrieved chunks are semantically similar to each other (focused, relevant retrieval). High entropy = retrieved chunks are semantically diverse (the system is grasping at unrelated content — coverage failure signal).</p>
+  <pre><code><span class="k">from</span> scipy.spatial.distance <span class="k">import</span> pdist
+<span class="k">from</span> scipy.stats <span class="k">import</span> entropy
+
+<span class="k">def</span> <span class="f">semantic_entropy</span>(retrieved_chunks: List[str]) -> float:
+    <span class="k">if</span> <span class="f">len</span>(retrieved_chunks) < <span class="num">2</span>: <span class="k">return</span> <span class="num">0.0</span>
+    chunk_embs = <span class="k">np</span>.<span class="f">array</span>([<span class="f">embed</span>(c) <span class="k">for</span> c <span class="k">in</span> retrieved_chunks])
+    <span class="c"># Pairwise cosine distances → histogram → entropy</span>
+    distances = <span class="f">pdist</span>(chunk_embs, metric=<span class="s">"cosine"</span>)
+    hist, _ = <span class="k">np</span>.<span class="f">histogram</span>(distances, bins=<span class="num">10</span>, density=<span class="k">True</span>)
+    hist = hist + <span class="num">1e-10</span>  <span class="c"># numerical stability</span>
+    <span class="k">return</span> <span class="f">float</span>(entropy(hist / hist.<span class="f">sum</span>()))</code></pre>
+
+  <h3>Signal 3: Hallucination Probability (HP)</h3>
+  <p>Uses a cross-encoder relevance model to score how well the retrieved chunks actually answer the query. Low cross-encoder score despite high cosine similarity = the chunks are topically similar but don't contain the answer — a strong hallucination precursor signal.</p>
+  <pre><code><span class="k">from</span> sentence_transformers <span class="k">import</span> CrossEncoder
+
+cross_encoder = <span class="f">CrossEncoder</span>(<span class="s">"cross-encoder/ms-marco-MiniLM-L-6-v2"</span>)
+
+<span class="k">def</span> <span class="f">hallucination_probability</span>(query: str, retrieved_chunks: List[str]) -> float:
+    <span class="c"># Score each (query, chunk) pair with cross-encoder</span>
+    pairs = [(query, chunk) <span class="k">for</span> chunk <span class="k">in</span> retrieved_chunks]
+    scores = cross_encoder.<span class="f">predict</span>(pairs)
+    max_relevance = <span class="f">float</span>(<span class="k">np</span>.<span class="f">max</span>(scores))
+    <span class="c"># Normalize to [0,1]: high relevance = low hallucination probability</span>
+    <span class="c"># Cross-encoder outputs raw logits, sigmoid to normalize</span>
+    normalized = <span class="num">1</span> / (<span class="num">1</span> + <span class="k">np</span>.<span class="f">exp</span>(-max_relevance))
+    <span class="k">return</span> <span class="num">1.0</span> - <span class="f">float</span>(normalized)  <span class="c"># invert: high relevance → low HP</span></code></pre>
+
+  <div class="callout insight">
+    <div class="cl">Why three signals instead of one</div>
+    <p>RC alone misses thin coverage (chunks retrieved with high similarity but insufficient depth). SE alone misses narrow gaps (a single off-topic chunk retrieved with high similarity). HP alone is expensive to compute at scale. The composite CS uses the cheaper RC and SE signals as a fast filter, and HP only on the borderline cases (CS between 0.35 and 0.65) where the additional signal cost is justified.</p>
+  </div>
+</div>
+
+<div class="doc-section" id="clustering">
+  <div class="section-header"><span class="section-num">05</span><h2 class="section-title">UMAP + HDBSCAN clustering</h2></div>
+  <p>With 5,000–50,000 probe queries scored, raw scores are not enough — we need to identify which <em>topic clusters</em> have coverage failures, not just which individual queries fail. UMAP reduces query embeddings to 2D for visualization; HDBSCAN identifies semantic clusters; coverage scores are aggregated per cluster.</p>
+
+  <h3>UMAP configuration</h3>
+  <pre><code><span class="k">import</span> umap
+<span class="k">import</span> numpy <span class="k">as</span> np
+
+<span class="k">def</span> <span class="f">project_to_2d</span>(query_embeddings: np.ndarray) -> np.ndarray:
+    reducer = umap.<span class="f">UMAP</span>(
+        n_neighbors=<span class="num">15</span>,       <span class="c"># local neighborhood size — 15 is standard for 5k-50k points</span>
+        min_dist=<span class="num">0.1</span>,         <span class="c"># minimum distance between points in 2D</span>
+        n_components=<span class="num">2</span>,       <span class="c"># 2D for visualization; use 10D for HDBSCAN input</span>
+        metric=<span class="s">"cosine"</span>,      <span class="c"># cosine distance for sentence embeddings</span>
+        random_state=<span class="num">42</span>,      <span class="c"># reproducibility</span>
+        low_memory=<span class="k">False</span>,     <span class="c"># use fast approximate nearest neighbors for speed</span>
+        n_epochs=<span class="num">200</span>,         <span class="c"># more epochs = better layout, slower</span>
+        spread=<span class="num">1.0</span>,           <span class="c"># scale of embedding in output space</span>
+    )
+    <span class="k">return</span> reducer.<span class="f">fit_transform</span>(query_embeddings)
+
+<span class="c"># IMPORTANT: Use higher-dimensional UMAP (10D) for HDBSCAN input</span>
+<span class="c"># The 2D projection is for visualization only — 2D loses information</span>
+<span class="c"># HDBSCAN should cluster in 10D space, then project to 2D for display</span>
+<span class="k">def</span> <span class="f">project_for_clustering</span>(query_embeddings: np.ndarray) -> np.ndarray:
+    reducer_10d = umap.<span class="f">UMAP</span>(n_components=<span class="num">10</span>, n_neighbors=<span class="num">15</span>, metric=<span class="s">"cosine"</span>, random_state=<span class="num">42</span>)
+    <span class="k">return</span> reducer_10d.<span class="f">fit_transform</span>(query_embeddings)</code></pre>
+
+  <div class="callout warn">
+    <div class="cl">Common mistake to avoid</div>
+    <p>Do NOT run HDBSCAN on the 2D UMAP projection. The 2D projection optimizes for visual clarity, not cluster preservation — it distorts distances. Always cluster in a higher-dimensional space (10D UMAP or the original embedding space), then project to 2D only for visualization. This is a mistake many implementations make and it produces meaningless clusters.</p>
+  </div>
+
+  <h3>HDBSCAN configuration</h3>
+  <pre><code><span class="k">import</span> hdbscan
+
+<span class="k">def</span> <span class="f">identify_clusters</span>(embeddings_10d: np.ndarray) -> np.ndarray:
+    clusterer = hdbscan.<span class="f">HDBSCAN</span>(
+        min_cluster_size=<span class="num">20</span>,    <span class="c"># minimum 20 queries to form a topic cluster</span>
+        min_samples=<span class="num">5</span>,          <span class="c"># core point density threshold</span>
+        metric=<span class="s">"euclidean"</span>,     <span class="c"># Euclidean on UMAP output (cosine handled by UMAP)</span>
+        cluster_selection_method=<span class="s">"eom"</span>,  <span class="c"># excess of mass — better for variable density</span>
+        prediction_data=<span class="k">True</span>,   <span class="c"># enables soft clustering for borderline points</span>
+    )
+    cluster_labels = clusterer.<span class="f">fit_predict</span>(embeddings_10d)
+    <span class="c"># cluster_labels[i] = -1 means query i is a noise point (genuine dark zone)</span>
+    <span class="c"># cluster_labels[i] >= 0 means query i belongs to cluster label[i]</span>
+    <span class="k">return</span> cluster_labels, clusterer
+
+<span class="c"># Cluster naming: use top-5 most representative queries per cluster</span>
+<span class="k">def</span> <span class="f">name_cluster</span>(cluster_queries: List[str], cluster_embeddings: np.ndarray) -> str:
+    centroid = cluster_embeddings.<span class="f">mean</span>(axis=<span class="num">0</span>)
+    similarities = [<span class="f">cosine_similarity</span>([centroid], [e])[<span class="num">0</span>][<span class="num">0</span>] <span class="k">for</span> e <span class="k">in</span> cluster_embeddings]
+    representative_queries = [cluster_queries[i] <span class="k">for</span> i <span class="k">in</span> <span class="k">np</span>.<span class="f">argsort</span>(similarities)[-<span class="num">3</span>:]]
+    naming_prompt = <span class="f">f"Name this topic cluster in 3-5 words: {representative_queries}"</span>
+    <span class="k">return</span> claude_haiku.<span class="f">invoke</span>(naming_prompt)</code></pre>
+</div>
+
+<div class="doc-section" id="darkzones">
+  <div class="section-header"><span class="section-num">06</span><h2 class="section-title">Dark zone classification</h2></div>
+  <p>Each cluster receives a cluster-level coverage score (mean of all probe coverage scores within the cluster) and is classified into one of three tiers.</p>
+
+  <div class="zone-grid">
+    <div class="zone-card" style="border-color:var(--red-light);background:var(--red-light)">
+      <div style="font-size:14px;font-weight:600;color:var(--red);margin-bottom:6px">Dark Zone</div>
+      <div style="font-size:12px;color:var(--red);margin-bottom:8px">Mean CS &lt; 0.30</div>
+      <div style="font-size:12px;color:var(--ink2)">Zero or near-zero coverage. Any user query about this topic will likely hallucinate. Highest priority to fix.</div>
+    </div>
+    <div class="zone-card" style="border-color:var(--amber-light);background:var(--amber-light)">
+      <div style="font-size:14px;font-weight:600;color:var(--amber);margin-bottom:6px">Thin Zone</div>
+      <div style="font-size:12px;color:var(--amber);margin-bottom:8px">Mean CS 0.30–0.60</div>
+      <div style="font-size:12px;color:var(--ink2)">Partial coverage. Simple queries succeed, complex ones fail. Adding 2–3 documents would likely fix.</div>
+    </div>
+    <div class="zone-card" style="border-color:var(--green-light);background:var(--green-light)">
+      <div style="font-size:14px;font-weight:600;color:var(--green);margin-bottom:6px">Adequate Zone</div>
+      <div style="font-size:12px;color:var(--green);margin-bottom:8px">Mean CS &gt; 0.60</div>
+      <div style="font-size:12px;color:var(--ink2)">Good coverage. Not guaranteed perfect but not a priority concern.</div>
+    </div>
+  </div>
+
+  <h3>Noise points — genuine dark zones</h3>
+  <p>HDBSCAN labels some queries as noise points (cluster = -1). These are not random noise — they are <strong>isolated queries with no semantic neighbors in the probe set</strong>. In coverage mapping terms, these represent unique topics that didn't cluster with any others: the system has never seen anything like them, and there's probably nothing in the KB related to them either. Noise points should be treated as Dark Zone severity.</p>
+
+  <h3>Cluster-level coverage computation</h3>
+  <pre><code><span class="k">def</span> <span class="f">compute_cluster_coverage</span>(cluster_labels, coverage_scores) -> List[ClusterCoverage]:
+    results = []
+    <span class="k">for</span> cluster_id <span class="k">in</span> <span class="f">set</span>(cluster_labels):
+        mask = cluster_labels == cluster_id
+        cluster_scores = [coverage_scores[i] <span class="k">for</span> i, m <span class="k">in</span> <span class="f">enumerate</span>(mask) <span class="k">if</span> m]
+        mean_cs = <span class="k">np</span>.<span class="f">mean</span>(cluster_scores)
+        std_cs = <span class="k">np</span>.<span class="f">std</span>(cluster_scores)
+        zone = (<span class="s">"DARK"</span> <span class="k">if</span> mean_cs < <span class="num">0.30</span> <span class="k">else</span>
+                <span class="s">"THIN"</span> <span class="k">if</span> mean_cs < <span class="num">0.60</span> <span class="k">else</span> <span class="s">"ADEQUATE"</span>)
+        <span class="c"># Severity score: combines mean_cs with cluster size and std</span>
+        <span class="c"># Large dark zones with low variance are the highest priority</span>
+        severity = (<span class="num">1</span> - mean_cs) * <span class="k">np</span>.<span class="f">log1p</span>(<span class="f">len</span>(cluster_scores)) * (<span class="num">1</span> - std_cs)
+        results.<span class="f">append</span>(<span class="f">ClusterCoverage</span>(
+            cluster_id=cluster_id,
+            zone=zone, mean_cs=mean_cs, std_cs=std_cs,
+            query_count=<span class="f">len</span>(cluster_scores), severity=severity
+        ))
+    <span class="k">return</span> <span class="f">sorted</span>(results, key=<span class="k">lambda</span> x: -x.severity)</code></pre>
+
+  <div class="formula">
+    <div class="fl">Cluster Severity Score</div>
+    Severity = (1 − mean_CS) × log(1 + cluster_size) × (1 − std_CS)
+    <br/><br/>
+    Large dark zones with consistent (low std) failure score highest.
+    <br/>A cluster of 500 queries all scoring CS=0.1 is more urgent than a
+    <br/>cluster of 10 queries averaging CS=0.05.
+  </div>
+</div>
+
+<div class="doc-section" id="recommendations">
+  <div class="section-header"><span class="section-num">07</span><h2 class="section-title">Document recommendation engine</h2></div>
+  <p>For every Dark or Thin zone cluster, the Cartographer produces a ranked list of documents that would fill the gap. The recommendation engine has three strategies depending on whether the system has access to external data sources.</p>
+
+  <h3>Strategy A: KB-internal rebalancing</h3>
+  <p>First check if documents already in the KB are being underutilized. Sometimes a topic has coverage but the chunking strategy buried it — long documents where the relevant section is far from the chunk boundaries. For Dark zones, check if any unchunked or poorly-chunked documents cover the topic before recommending external documents.</p>
+
+  <h3>Strategy B: External document recommendation via web search</h3>
+  <pre><code><span class="k">async def</span> <span class="f">recommend_documents_for_gap</span>(cluster: ClusterCoverage, cluster_queries: List[str]) -> List[DocumentRec]:
+    <span class="c"># 1. Generate a "centroid query" — the most representative query for this cluster</span>
+    centroid_query = <span class="f">get_centroid_query</span>(cluster_queries)
+
+    <span class="c"># 2. Generate document search terms from centroid query</span>
+    search_terms_prompt = <span class="f">f"""
+This is a knowledge gap in a RAG system. Users are asking questions like:
+{centroid_query}
+
+Generate 5 specific search queries that would find documents to fill this gap.
+Focus on authoritative sources: official docs, academic papers, industry reports.
+Return only the search queries, one per line.
+"""</span>
+    search_queries = <span class="k">await</span> claude_haiku.<span class="f">ainvoke</span>(search_terms_prompt)
+
+    <span class="c"># 3. Web search for each query (using Brave Search API or SerpAPI)</span>
+    candidate_docs = []
+    <span class="k">for</span> sq <span class="k">in</span> search_queries.<span class="f">strip</span>().<span class="f">split</span>(<span class="s">"\n"</span>):
+        results = <span class="k">await</span> web_search_api.<span class="f">search</span>(sq, num_results=<span class="num">5</span>)
+        candidate_docs.<span class="f">extend</span>(results)
+
+    <span class="c"># 4. Rank candidates by semantic similarity to cluster centroid</span>
+    centroid_emb = <span class="f">embed</span>(centroid_query)
+    ranked = <span class="f">sorted</span>(
+        candidate_docs,
+        key=<span class="k">lambda</span> d: <span class="f">cosine_similarity</span>([centroid_emb], [<span class="f">embed</span>(d.title + d.snippet)])[<span class="num">0</span>][<span class="num">0</span>],
+        reverse=<span class="k">True</span>
+    )
+    <span class="k">return</span> ranked[:<span class="num">5</span>]  <span class="c"># top 5 recommendations per gap</span></code></pre>
+
+  <h3>The GapReport schema</h3>
+  <div class="schema-block">
+    <div class="schema-header">GapReport — final output of the Cartographer</div>
+    <div class="schema-body">
+      <div class="sf"><span class="fn">report_id</span><span class="ft">UUID</span><span class="fd">Unique audit run identifier</span></div>
+      <div class="sf"><span class="fn">kb_fingerprint</span><span class="ft">str</span><span class="fd">Hash of KB contents at audit time — enables delta comparison between runs</span></div>
+      <div class="sf"><span class="fn">probe_count</span><span class="ft">int</span><span class="fd">Total probe queries generated and scored</span></div>
+      <div class="sf"><span class="fn">cluster_count</span><span class="ft">int</span><span class="fd">Total topic clusters identified</span></div>
+      <div class="sf"><span class="fn">overall_coverage_score</span><span class="ft">float</span><span class="fd">Mean CS across all probes — single-number KB health metric</span></div>
+      <div class="sf"><span class="fn">dark_zones</span><span class="ft">List[ClusterCoverage]</span><span class="fd">All clusters with zone=DARK, sorted by severity descending</span></div>
+      <div class="sf"><span class="fn">thin_zones</span><span class="ft">List[ClusterCoverage]</span><span class="fd">All clusters with zone=THIN, sorted by severity descending</span></div>
+      <div class="sf"><span class="fn">recommendations</span><span class="ft">List[DocumentRec]</span><span class="fd">Per dark zone: recommended documents to add, ranked by expected coverage improvement</span></div>
+      <div class="sf"><span class="fn">coverage_map_uri</span><span class="ft">str</span><span class="fd">URL to the interactive Plotly Dash 2D coverage map visualization</span></div>
+      <div class="sf"><span class="fn">estimated_improvement</span><span class="ft">float</span><span class="fd">Predicted overall_coverage_score after implementing top-3 recommendations (simulated)</span></div>
+      <div class="sf"><span class="fn">generated_at</span><span class="ft">datetime</span><span class="fd">Audit timestamp</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="doc-section" id="storage">
+  <div class="section-header"><span class="section-num">08</span><h2 class="section-title">Storage design</h2></div>
+  <pre><code><span class="c">-- Audit runs</span>
+<span class="k">CREATE TABLE</span> audit_runs (
+    report_id       UUID <span class="k">PRIMARY KEY</span>,
+    kb_fingerprint  VARCHAR(<span class="num">64</span>),
+    probe_count     INT,
+    cluster_count   INT,
+    overall_score   FLOAT,
+    config          JSONB,   <span class="c">-- weights α,β,γ and thresholds used</span>
+    created_at      TIMESTAMPTZ <span class="k">DEFAULT NOW</span>()
+);
+
+<span class="c">-- Per-probe results</span>
+<span class="k">CREATE TABLE</span> probe_results (
+    probe_id        UUID <span class="k">PRIMARY KEY</span>,
+    report_id       UUID <span class="k">REFERENCES</span> audit_runs(report_id),
+    query_text      TEXT,
+    query_embedding vector(<span class="num">384</span>),  <span class="c">-- pgvector for similarity queries</span>
+    umap_x          FLOAT,
+    umap_y          FLOAT,
+    cluster_id      INT,
+    coverage_score  FLOAT,
+    rc_score        FLOAT,
+    se_score        FLOAT,
+    hp_score        FLOAT,
+    generation_strategy VARCHAR(<span class="num">30</span>),  <span class="c">-- taxonomy/adversarial/counterfactual/userpattern</span>
+    retrieved_chunk_ids JSONB
+);
+
+<span class="c">-- Cluster summaries</span>
+<span class="k">CREATE TABLE</span> cluster_summaries (
+    cluster_id      INT,
+    report_id       UUID,
+    cluster_name    VARCHAR(<span class="num">100</span>),
+    zone            VARCHAR(<span class="num">10</span>),
+    mean_cs         FLOAT,
+    std_cs          FLOAT,
+    severity        FLOAT,
+    query_count     INT,
+    centroid_emb    vector(<span class="num">384</span>),
+    <span class="k">PRIMARY KEY</span>(cluster_id, report_id)
+);
+
+<span class="c">-- Track improvement over time</span>
+<span class="k">CREATE TABLE</span> kb_health_history (
+    report_id       UUID <span class="k">REFERENCES</span> audit_runs(report_id),
+    dark_zone_count INT,
+    thin_zone_count INT,
+    overall_score   FLOAT,
+    run_date        DATE
+);</code></pre>
+</div>
+
+<div class="doc-section" id="visualization">
+  <div class="section-header"><span class="section-num">09</span><h2 class="section-title">Visualization layer</h2></div>
+  <p>The coverage map is the signature output of the Cartographer — a 2D scatter plot where every dot is a probe query, colored by coverage score, with cluster regions labeled. Dark zones appear as visible red clusters. The map makes the abstract concept of "coverage gap" immediately legible to non-technical stakeholders.</p>
+
+  <pre><code><span class="k">import</span> plotly.express <span class="k">as</span> px
+<span class="k">import</span> plotly.graph_objects <span class="k">as</span> go
+<span class="k">import</span> dash
+<span class="k">from</span> dash <span class="k">import</span> dcc, html
+
+<span class="k">def</span> <span class="f">build_coverage_map</span>(probe_results: List[ProbeResult], clusters: List[ClusterCoverage]) -> go.Figure:
+    df = <span class="f">pd</span>.<span class="f">DataFrame</span>([{
+        <span class="s">"x"</span>: p.umap_x, <span class="s">"y"</span>: p.umap_y,
+        <span class="s">"coverage_score"</span>: p.coverage_score,
+        <span class="s">"query"</span>: p.query_text,
+        <span class="s">"cluster_name"</span>: <span class="f">get_cluster_name</span>(p.cluster_id, clusters),
+        <span class="s">"zone"</span>: <span class="f">get_zone</span>(p.cluster_id, clusters)
+    } <span class="k">for</span> p <span class="k">in</span> probe_results])
+
+    fig = px.<span class="f">scatter</span>(
+        df, x=<span class="s">"x"</span>, y=<span class="s">"y"</span>,
+        color=<span class="s">"coverage_score"</span>,
+        color_continuous_scale=<span class="s">"RdYlGn"</span>,  <span class="c"># red=dark, green=adequate</span>
+        range_color=[<span class="num">0</span>, <span class="num">1</span>],
+        hover_data=[<span class="s">"query"</span>, <span class="s">"cluster_name"</span>, <span class="s">"coverage_score"</span>],
+        title=<span class="s">"Knowledge Base Coverage Map"</span>
+    )
+
+    <span class="c"># Add cluster centroid labels for dark and thin zones only</span>
+    <span class="k">for</span> cluster <span class="k">in</span> clusters:
+        <span class="k">if</span> cluster.zone <span class="k">in</span> [<span class="s">"DARK"</span>, <span class="s">"THIN"</span>]:
+            fig.<span class="f">add_annotation</span>(
+                x=cluster.centroid_x, y=cluster.centroid_y,
+                text=<span class="f">f"⚠ {cluster.name}"</span>,
+                font=<span class="f">dict</span>(size=<span class="num">10</span>, color=<span class="s">"red"</span> <span class="k">if</span> cluster.zone==<span class="s">"DARK"</span> <span class="k">else</span> <span class="s">"orange"</span>),
+                showarrow=<span class="k">False</span>, bgcolor=<span class="s">"white"</span>, bordercolor=<span class="s">"red"</span>
+            )
+    <span class="k">return</span> fig</code></pre>
+
+  <h3>Dash dashboard components</h3>
+  <ul>
+    <li><strong>Coverage map:</strong> 2D UMAP scatter colored by coverage score. Click a cluster → see all probe queries and the top-3 document recommendations.</li>
+    <li><strong>Zone summary table:</strong> Sortable table of all clusters by severity. Columns: cluster name, zone, mean CS, query count, severity score, recommended docs.</li>
+    <li><strong>Health trend chart:</strong> Line chart of <span class="ic">overall_coverage_score</span> over time (requires multiple audit runs). Shows whether KB improvements are working.</li>
+    <li><strong>Generation strategy breakdown:</strong> Bar chart showing which probe generation strategies found the most dark zones. Guides future probe strategy weighting.</li>
+  </ul>
+</div>
+
+<div class="doc-section" id="eval">
+  <div class="section-header"><span class="section-num">10</span><h2 class="section-title">Evaluating the Cartographer itself</h2></div>
+  <div class="callout insight">
+    <div class="cl">The meta-evaluation problem</div>
+    <p>How do you know if the Cartographer is finding real coverage gaps vs generating false alarms? This requires a held-out validation set of known gaps and known adequate zones — created by deliberately withholding documents from the KB, running the Cartographer, and checking whether the withheld topics appear as dark zones.</p>
+  </div>
+
+  <h3>Validation methodology: deliberate gap injection</h3>
+  <pre><code><span class="k">def</span> <span class="f">evaluate_cartographer_accuracy</span>(full_kb: List[Document], cartographer: Cartographer):
+    <span class="c"># 1. Select 10 topic clusters from full KB as ground truth</span>
+    <span class="c"># 5 will become "injected gaps" (removed), 5 will remain</span>
+    topic_clusters = <span class="f">cluster_kb_topics</span>(full_kb, n_clusters=<span class="num">10</span>)
+    gap_topics = topic_clusters[:<span class="num">5</span>]      <span class="c"># these become gaps</span>
+    control_topics = topic_clusters[<span class="num">5</span>:]  <span class="c"># these remain</span>
+
+    <span class="c"># 2. Create reduced KB with gap topics removed</span>
+    gap_doc_ids = {d.id <span class="k">for</span> cluster <span class="k">in</span> gap_topics <span class="k">for</span> d <span class="k">in</span> cluster.documents}
+    reduced_kb = [d <span class="k">for</span> d <span class="k">in</span> full_kb <span class="k">if</span> d.id <span class="k">not in</span> gap_doc_ids]
+
+    <span class="c"># 3. Run Cartographer on reduced KB</span>
+    report = cartographer.<span class="f">audit</span>(reduced_kb)
+
+    <span class="c"># 4. Check: do gap topics appear as dark zones?</span>
+    detected_gap_names = {c.name <span class="k">for</span> c <span class="k">in</span> report.dark_zones}
+    true_gap_names = {cluster.topic_name <span class="k">for</span> cluster <span class="k">in</span> gap_topics}
+    control_names = {cluster.topic_name <span class="k">for</span> cluster <span class="k">in</span> control_topics}
+
+    precision = <span class="f">len</span>(detected_gap_names & true_gap_names) / <span class="f">len</span>(detected_gap_names)
+    recall = <span class="f">len</span>(detected_gap_names & true_gap_names) / <span class="f">len</span>(true_gap_names)
+    false_positive_rate = <span class="f">len</span>(detected_gap_names & control_names) / <span class="f">len</span>(control_names)
+    <span class="k">return</span> {<span class="s">"precision"</span>: precision, <span class="s">"recall"</span>: recall, <span class="s">"fpr"</span>: false_positive_rate}</code></pre>
+
+  <h3>Target performance metrics</h3>
+  <table>
+    <tr><th>Metric</th><th>Target</th><th>Acceptable minimum</th></tr>
+    <tr><td>Dark zone detection precision</td><td>≥ 0.80</td><td>0.70</td></tr>
+    <tr><td>Dark zone detection recall</td><td>≥ 0.85</td><td>0.75</td></tr>
+    <tr><td>False positive rate (adequately covered zones flagged)</td><td>≤ 0.15</td><td>0.25</td></tr>
+    <tr><td>Probe generation diversity (distinct topic clusters covered)</td><td>≥ 90% of KB topics</td><td>80%</td></tr>
+    <tr><td>End-to-end audit latency (5k probes)</td><td>≤ 20 minutes</td><td>45 minutes</td></tr>
+  </table>
+</div>
+
+<div class="doc-section" id="integration">
+  <div class="section-header"><span class="section-num">11</span><h2 class="section-title">RAG system integration</h2></div>
+  <p>The Cartographer integrates with any RAG system through a simple connector interface. Three connector implementations are provided out of the box.</p>
+  <pre><code><span class="k">from</span> abc <span class="k">import</span> ABC, abstractmethod
+
+<span class="k">class</span> <span class="f">RAGConnector</span>(ABC):
+    <span class="k">@abstractmethod</span>
+    <span class="k">async def</span> <span class="f">query</span>(self, question: str) -> RAGResponse:
+        <span class="s">"""Submit a query and get retrieved chunks + generated answer."""</span>
+        ...
+
+<span class="k">class</span> <span class="f">QdrantRAGConnector</span>(RAGConnector):
+    <span class="k">def</span> <span class="f">__init__</span>(self, qdrant_url: str, collection: str, llm_endpoint: str): ...
+    <span class="k">async def</span> <span class="f">query</span>(self, question: str) -> RAGResponse:
+        chunks = <span class="k">await</span> self.<span class="f">_retrieve</span>(question)
+        answer = <span class="k">await</span> self.<span class="f">_generate</span>(question, chunks)
+        <span class="k">return</span> <span class="f">RAGResponse</span>(question=question, chunks=chunks, answer=answer)
+
+<span class="k">class</span> <span class="f">HTTPRAGConnector</span>(RAGConnector):
+    <span class="s">"""Generic HTTP connector — works with any RAG system that exposes a REST API."""</span>
+    <span class="k">def</span> <span class="f">__init__</span>(self, endpoint_url: str, auth_header: str = <span class="k">None</span>): ...
+    <span class="k">async def</span> <span class="f">query</span>(self, question: str) -> RAGResponse:
+        resp = <span class="k">await</span> httpx.<span class="f">post</span>(self.endpoint_url, json={<span class="s">"query"</span>: question})
+        <span class="k">return</span> <span class="f">RAGResponse</span>.<span class="f">from_dict</span>(resp.<span class="f">json</span>())
+
+<span class="k">class</span> <span class="f">LangChainRAGConnector</span>(RAGConnector):
+    <span class="s">"""Wraps any LangChain RetrievalQA chain."""</span>
+    <span class="k">def</span> <span class="f">__init__</span>(self, chain): self.chain = chain
+    <span class="k">async def</span> <span class="f">query</span>(self, question: str) -> RAGResponse:
+        result = <span class="k">await</span> self.chain.<span class="f">ainvoke</span>({<span class="s">"query"</span>: question})
+        <span class="k">return</span> <span class="f">RAGResponse</span>(question=question, chunks=result[<span class="s">"source_documents"</span>], answer=result[<span class="s">"result"</span>])</code></pre>
+
+  <h3>Continuous monitoring mode</h3>
+  <p>Beyond one-time audits, the Cartographer can run in continuous monitoring mode: an Airflow DAG runs a 500-probe mini-audit nightly, tracks the <span class="ic">overall_coverage_score</span> trend, and alerts when the score drops by more than 0.05 compared to the previous week — indicating that a KB update introduced new gaps.</p>
+</div>
+
+<div class="doc-section" id="roadmap">
+  <div class="section-header"><span class="section-num">12</span><h2 class="section-title">Implementation roadmap</h2></div>
+  <div class="phase">
+    <div class="phase-header"><div class="pl">Phase 1</div><div class="pt">Coverage scorer + basic probe generation</div><div class="ptm">Week 1</div></div>
+    <ul><li>Implement RC, SE, HP scoring functions — unit test each with 20 manual queries</li><li>Taxonomy-guided probe generation using BERTopic on a sample KB (100 documents)</li><li>HTTP RAG connector — test against your SENTINEL-X RAG endpoint</li><li>PostgreSQL schema + basic report storage</li><li><strong>Deliverable:</strong> CLI that runs 1,000 probes against any RAG system and outputs per-query coverage scores as a CSV</li></ul>
+  </div>
+  <div class="phase">
+    <div class="phase-header"><div class="pl">Phase 2</div><div class="pt">UMAP + HDBSCAN + dark zone classification</div><div class="ptm">Week 2</div></div>
+    <ul><li>Add UMAP (10D for clustering, 2D for visualization)</li><li>HDBSCAN clustering — tune min_cluster_size on your KB size</li><li>Cluster naming with Claude Haiku</li><li>Dark/Thin/Adequate zone classification with severity scoring</li><li>Add adversarial and counterfactual probe generators</li><li><strong>Deliverable:</strong> Full clustering pipeline producing a cluster summary table. Dark zones identifiable by name.</li></ul>
+  </div>
+  <div class="phase">
+    <div class="phase-header"><div class="pl">Phase 3</div><div class="pt">Document recommendations + Plotly Dash visualization</div><div class="ptm">Week 2–3</div></div>
+    <ul><li>Document recommendation engine (KB-internal + web search)</li><li>Plotly Dash coverage map — 2D scatter with cluster labels</li><li>GapReport full schema + JSON export</li><li>Deliberate gap injection validation methodology</li><li><strong>Deliverable:</strong> Full audit with interactive coverage map and document recommendations</li></ul>
+  </div>
+  <div class="phase">
+    <div class="phase-header"><div class="pl">Phase 4</div><div class="pt">Continuous monitoring + integration hardening</div><div class="ptm">Week 3</div></div>
+    <ul><li>Airflow nightly mini-audit DAG (500 probes)</li><li>KB health trend chart in Dash dashboard</li><li>LangChain + Qdrant connectors</li><li>Docker Compose packaging</li><li><strong>Deliverable:</strong> Production-ready auditor with continuous monitoring. Reuses SENTINEL-X vector infrastructure.</li></ul>
+  </div>
+</div>
+
+<div class="doc-section" id="research">
+  <div class="section-header"><span class="section-num">13</span><h2 class="section-title">Research contributions</h2></div>
+  <div class="contribution">
+    <h4>Coverage Score formula (CS)</h4>
+    <p>The composite CS — combining Retrieval Confidence, Semantic Entropy, and cross-encoder Hallucination Probability with tunable weights — is a formally defined, novel metric for RAG coverage assessment. The empirical weight calibration on the gap injection benchmark is publishable at ACL System Demonstrations or EMNLP.</p>
+  </div>
+  <div class="contribution">
+    <h4>The four-strategy probe generation framework</h4>
+    <p>Combining taxonomy-guided, HyDE adversarial, counterfactual, and user-pattern probe generation strategies is a systematic framework for coverage exploration that goes beyond any single-strategy approach in the literature. The characterization of which strategies find which gap types (absolute vs. boundary vs. reasoning) is an empirical contribution.</p>
+  </div>
+  <div class="contribution">
+    <h4>Gap injection validation methodology</h4>
+    <p>The deliberate gap injection benchmark — withholding KB document clusters and measuring Cartographer detection precision/recall — is a reusable evaluation methodology for any coverage mapping tool. Releasing this methodology enables the community to comparably evaluate future tools.</p>
+  </div>
+  <div class="contribution">
+    <h4>Severity score for prioritized remediation</h4>
+    <p>The cluster severity score — combining mean coverage, log-cluster size, and coverage consistency — provides a principled prioritization of remediation effort. This is a practical contribution to the emerging field of knowledge base management for production AI systems.</p>
+  </div>
+</div>
+
+<div class="doc-section" id="failure">
+  <div class="section-header"><span class="section-num">14</span><h2 class="section-title">Failure modes & mitigations</h2></div>
+  <table>
+    <tr><th>Failure mode</th><th>Impact</th><th>Mitigation</th></tr>
+    <tr><td>BERTopic produces too many micro-topics (100+ clusters for a small KB)</td><td>Noisy clustering, unintelligible cluster names</td><td>Set nr_topics="auto" with a minimum threshold: merge clusters smaller than 0.5% of probe set. Enforce max 50 named clusters.</td></tr>
+    <tr><td>Probe generation produces duplicate or near-identical queries</td><td>Overfitting to a narrow topic region, missing other gaps</td><td>Deduplicate probe set using cosine similarity threshold 0.95 before running coverage scoring. Drop near-duplicates.</td></tr>
+    <tr><td>UMAP produces different layouts on different runs (random_state not fully deterministic)</td><td>Inconsistent coverage maps across audit runs</td><td>Always set random_state=42 and use spectral initialization (init="spectral"). Store 2D coordinates per probe — re-run visualization from stored coordinates, don't re-project.</td></tr>
+    <tr><td>Cross-encoder HP scoring is too slow for 50k probes</td><td>Audit takes hours, not practical</td><td>Run HP scoring only on borderline probes (CS_preliminary between 0.3 and 0.7). Use RC + SE only for clear dark zones (RC &lt; 0.3) and clear adequate zones (RC &gt; 0.7).</td></tr>
+    <tr><td>RAG connector endpoint has rate limits, 50k queries take too long</td><td>Audit exceeds practical time budget</td><td>Implement async batch querying with configurable concurrency (default: 50 concurrent). Respect Retry-After headers. Mini-audit mode (500 probes) for daily monitoring.</td></tr>
+    <tr><td>Coverage map misleads stakeholders — low CS cluster is actually fine quality</td><td>Unnecessary document additions, wasted engineering time</td><td>Always include sample probe queries in GapReport alongside the score. Let humans sanity-check a random sample of 10 dark zone queries before acting on recommendations.</td></tr>
+  </table>
+</div>
+
+<div class="divider"></div>
+<p style="font-size:12px;color:var(--ink3);text-align:center;padding-bottom:24px">Latent Coverage Cartographer · Technical Specification v1.0 · UMAP + HDBSCAN + Plotly Dash + pgvector</p>
+</main>
+<script>
+const links=document.querySelectorAll('#sidebar a');
+const sections=document.querySelectorAll('.doc-section');
+const obs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){links.forEach(l=>l.classList.remove('active'));const a=document.querySelector(`#sidebar a[href="#${x.target.id}"]`);if(a)a.classList.add('active')}})},{rootMargin:'-20% 0px -70% 0px'});
+sections.forEach(s=>obs.observe(s));
+</script>
+</body>
+</html>
