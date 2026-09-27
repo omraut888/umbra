@@ -16,7 +16,7 @@ import numpy as np
 
 from src.clustering.hdbscan_clusterer import NOISE, identify_clusters
 from src.clustering.umap_projector import project_for_clustering, project_to_2d
-from src.clustering.zones import ClusterCoverage, compute_cluster_coverage
+from src.clustering.zones import DEFAULT_THRESHOLDS, ClusterCoverage, ZoneThresholds, compute_cluster_coverage
 from src.connectors.base import RAGConnector, RAGResponse
 from src.probe_generation.taxonomy import Probe
 from src.scoring.composite import CoverageScore
@@ -116,6 +116,7 @@ def cluster_outcomes(
     outcomes: Sequence[ProbeOutcome],
     min_cluster_size: int = 20,
     min_samples: int = 5,
+    thresholds: ZoneThresholds = DEFAULT_THRESHOLDS,
 ) -> List[ClusterCoverage]:
     """Project, cluster and zone the scored probes. Fills cluster/UMAP fields in place."""
     scored = [o for o in outcomes if o.score is not None]
@@ -131,7 +132,8 @@ def cluster_outcomes(
         o.umap_x, o.umap_y = float(c2[0]), float(c2[1])
 
     clusters = compute_cluster_coverage(
-        clustering.labels, [o.score.score for o in scored], embs, coords_2d, [o.probe.query for o in scored])
+        clustering.labels, [o.score.score for o in scored], embs, coords_2d, [o.probe.query for o in scored],
+        thresholds)
     strategies = {}
     for o in scored:
         strategies.setdefault(o.cluster_id, Counter())[o.probe.strategy] += 1

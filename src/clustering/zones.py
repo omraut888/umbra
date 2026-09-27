@@ -10,14 +10,31 @@ import numpy as np
 
 from src.clustering.hdbscan_clusterer import NOISE
 
-DARK_BELOW = 0.30
-ADEQUATE_ABOVE = 0.60
 
 
-def classify_zone(mean_cs: float) -> str:
-    if mean_cs < DARK_BELOW:
+@dataclass(frozen=True)
+class ZoneThresholds:
+    dark_below: float
+    adequate_above: float
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.dark_below <= self.adequate_above <= 1.0:
+            raise ValueError(f"need 0 <= dark_below <= adequate_above <= 1, got {self}")
+
+    @classmethod
+    def parse(cls, spec: str) -> "ZoneThresholds":
+        dark, adequate = (float(x) for x in spec.split(","))
+        return cls(dark, adequate)
+
+
+SPEC_THRESHOLDS = ZoneThresholds(0.30, 0.60)
+DEFAULT_THRESHOLDS = SPEC_THRESHOLDS
+
+
+def classify_zone(mean_cs: float, thresholds: ZoneThresholds = DEFAULT_THRESHOLDS) -> str:
+    if mean_cs < thresholds.dark_below:
         return "DARK"
-    if mean_cs <= ADEQUATE_ABOVE:
+    if mean_cs <= thresholds.adequate_above:
         return "THIN"
     return "ADEQUATE"
 
@@ -62,6 +79,7 @@ def compute_cluster_coverage(
     query_embeddings: np.ndarray,
     coords_2d: np.ndarray,
     queries: Sequence[str],
+    thresholds: ZoneThresholds = DEFAULT_THRESHOLDS,
 ) -> List[ClusterCoverage]:
     """One ClusterCoverage per cluster (noise bucket included), most severe first.
 
@@ -79,7 +97,7 @@ def compute_cluster_coverage(
         reps = [queries[idx[i]] for i in representative_indices(query_embeddings[idx])]
         results.append(ClusterCoverage(
             cluster_id=int(cid),
-            zone=classify_zone(mean_cs),
+            zone=classify_zone(mean_cs, thresholds),
             mean_cs=mean_cs,
             std_cs=std_cs,
             query_count=len(idx),

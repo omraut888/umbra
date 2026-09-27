@@ -15,6 +15,7 @@ from typing import List, Tuple
 import click
 from dotenv import load_dotenv
 
+from src.clustering.zones import DEFAULT_THRESHOLDS, ZoneThresholds
 from src.probe_generation.strategies import ALL_STRATEGIES
 from src.probe_generation.taxonomy import CLAUDE_MODEL, Probe
 from src.scoring.composite import DEFAULT_HP_BAND, ScoringWeights
@@ -62,8 +63,13 @@ def cli(verbose: bool) -> None:
 @click.option("--n-probes", default=1000, show_default=True, type=click.IntRange(min=0),
               help="Probes to generate across the chosen strategies (before dedup).")
 @click.option("--output", required=True, type=click.Path(dir_okay=False, path_type=Path), help="Per-probe CSV report.")
-@click.option("--strategies", default=",".join(ALL_STRATEGIES), show_default=True,
-              help="Comma-separated generation strategies, or 'none' to only use --probes-file.")
+@click.option("--strategies", default="taxonomy,adversarial,counterfactual", show_default=True,
+              help=f"Comma-separated, from: {', '.join(ALL_STRATEGIES)}; or 'none' to only use --probes-file. "
+                   "kb_blind also needs --topics-file or --domain.")
+@click.option("--topics-file", type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              help="Topics the KB should cover, for kb_blind (JSON: [{name, description}] or {name: description}).")
+@click.option("--domain", help="One-line description of what the KB should cover; kb_blind expands it into topics.")
+@click.option("--kb-blind-per-topic", default=30, show_default=True, help="kb_blind probes per topic.")
 @click.option("--probes-file", type=click.Path(exists=True, dir_okay=False, path_type=Path),
               help="Extra probes added to the generated ones (.jsonl or one query per line).")
 @click.option("--weights", default="0.4,0.35,0.25", show_default=True, help="alpha,beta,gamma for RC, 1-SE, 1-HP.")
@@ -73,19 +79,23 @@ def cli(verbose: bool) -> None:
               help="dispersion = mean pairwise cosine distance; spec = the original spec §4 histogram entropy.")
 @click.option("--cluster/--no-cluster", default=True, show_default=True, help="UMAP + HDBSCAN + zone summary.")
 @click.option("--min-cluster-size", default=20, show_default=True)
+@click.option("--zone-thresholds", default=f"{DEFAULT_THRESHOLDS.dark_below},{DEFAULT_THRESHOLDS.adequate_above}",
+              show_default=True, help="dark_below,adequate_above for cluster zones.")
 @click.option("--payload", default="{}", help="Extra JSON merged into each request body, e.g. '{\"top_k\": 5}'.")
 @click.option("--auth-header", envvar="RAG_AUTH_HEADER", help="Authorization header value for the endpoint.")
 @click.option("--concurrency", default=50, show_default=True, help="Concurrent RAG queries.")
 @click.option("--model", default=CLAUDE_MODEL, show_default=True, help="Claude model for generation and naming.")
 @click.option("--db-dsn", envvar="POSTGRES_DSN", help="Postgres DSN; results are stored when set. [env: POSTGRES_DSN]")
 @click.option("--no-db", is_flag=True, help="Skip Postgres even if POSTGRES_DSN is set.")
-def audit(endpoint, kb_path, n_probes, output, strategies, probes_file, weights, hp_band, se_method, cluster,
-          min_cluster_size, payload, auth_header, concurrency, model, db_dsn, no_db) -> None:
+def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, kb_blind_per_topic, probes_file,
+          weights, hp_band, se_method, cluster, min_cluster_size, zone_thresholds, payload, auth_header, concurrency,
+          model, db_dsn, no_db) -> None:
     """Probe a RAG system, score coverage per probe, and cluster the results into zones."""
     from src.audit import cluster_outcomes, overall_score, persist, run_probes, write_cluster_csv, write_csv
     from src.clustering.naming import name_clusters
     from src.connectors.http import HTTPRAGConnector
     from src.data.kb_loader import kb_fingerprint, load_chunks, load_documents
+    from src.probe_generation.kb_blind import enumerate_domain_topics, load_topics_file
     from src.probe_generation.strategies import generate_probe_set
     from src.probe_generation.taxonomy import anthropic_completer
     from src.scoring.scorer import CoverageScorer, ScorerConfig
@@ -93,19 +103,23 @@ def audit(endpoint, kb_path, n_probes, output, strategies, probes_file, weights,
     try:
         config = ScorerConfig(weights=ScoringWeights.parse(weights), hp_band=_parse_band(hp_band), se_method=se_method)
         extra_payload = json.loads(payload)
+        thresholds = ZoneThresholds.parse(zone_thresholds)
     except (ValueError, json.JSONDecodeError) as exc:
         raise click.BadParameter(str(exc)) from exc
     chosen = [] if strategies.strip() == "none" else [s.strip() for s in strategies.split(",") if s.strip()]
     if not chosen and not probes_file:
         raise click.UsageError("nothing to run: pick --strategies or pass --probes-file")
-    if chosen and n_probes == 0:
+    if set(chosen) - {"kb_blind"} and n_probes == 0:
         raise click.UsageError("--n-probes must be > 0 when generating probes")
+    if "kb_blind" in chosen and not (topics_file or domain):
+        raise click.UsageError("kb_blind needs --topics-file or --domain")
 
     docs = load_documents(kb_path)
     fingerprint = kb_fingerprint(docs)
     click.echo(f"KB: {len(docs)} documents, fingerprint {fingerprint[:12]}")
 
-    extra_config = {"strategies": chosen, "n_probes_requested": n_probes if chosen else 0}
+    extra_config = {"strategies": chosen, "n_probes_requested": n_probes if chosen else 0,
+                    "zone_thresholds": [thresholds.dark_below, thresholds.adequate_above]}
     extra_probes = []
     if probes_file:
         extra_probes = load_probes_file(probes_file)
@@ -113,10 +127,17 @@ def audit(endpoint, kb_path, n_probes, output, strategies, probes_file, weights,
         click.echo(f"Loaded {len(extra_probes)} probes from {probes_file}")
 
     complete = anthropic_completer(model=model) if (chosen or cluster) else None
+    blind_topics = []
+    if "kb_blind" in chosen:
+        blind_topics = load_topics_file(topics_file) if topics_file else asyncio.run(enumerate_domain_topics(domain, complete))
+        click.echo(f"kb_blind: {len(blind_topics)} topics x {kb_blind_per_topic} probes"
+                   + ("" if topics_file else f" (expanded from --domain: {', '.join(t.name for t in blind_topics)})"))
+        extra_config.update(kb_blind_topics=[t.name for t in blind_topics], kb_blind_per_topic=kb_blind_per_topic)
     if chosen:
         chunks = load_chunks(kb_path)
-        click.echo(f"Generating {n_probes} probes with {model}: {', '.join(chosen)}")
-        probes, topics = asyncio.run(generate_probe_set(chunks, n_probes, chosen, complete, extra_probes))
+        click.echo(f"Generating probes with {model}: {', '.join(chosen)}")
+        probes, topics = asyncio.run(generate_probe_set(chunks, n_probes, chosen, complete, extra_probes,
+                                                        blind_topics, kb_blind_per_topic))
         if topics:
             for t in topics:
                 click.echo(f"  taxonomy topic {t.topic_id:>2} ({t.size:>3} chunks): {t.label}")
@@ -144,7 +165,7 @@ def audit(endpoint, kb_path, n_probes, output, strategies, probes_file, weights,
         click.echo(f"Skipping clustering: {len(scored)} scored probes is too few for min_cluster_size={min_cluster_size}")
     elif cluster:
         click.echo("Clustering (UMAP 10D -> HDBSCAN, UMAP 2D for display)...")
-        clusters = cluster_outcomes(outcomes, min_cluster_size=min_cluster_size)
+        clusters = cluster_outcomes(outcomes, min_cluster_size=min_cluster_size, thresholds=thresholds)
         asyncio.run(name_clusters(clusters, complete))
         cluster_path = output.with_suffix(".clusters.csv")
         write_cluster_csv(clusters, cluster_path)
