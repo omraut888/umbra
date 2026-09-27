@@ -79,8 +79,8 @@ instead of picking them by hand.
 3. **Score each probe** from 0 to 1 using three signals (below).
 4. **Cluster**: UMAP to 10D, HDBSCAN, UMAP to 2D for display, Haiku names each
    cluster from its three most central questions.
-5. **Classify zones**: mean score per cluster → dark (< 0.324), thin
-   (0.324–0.400) or adequate (> 0.400), plus a severity score for ordering.
+5. **Classify zones**: mean score per cluster → dark (< 0.334), thin
+   (0.334–0.408) or adequate (> 0.408), plus a severity score for ordering.
    The cutoffs come from a gap-injection benchmark, not the spec (below).
 6. **Report**: a GapReport JSON (`docs/gap_report.schema.json`) with every
    cluster sorted by severity, sample questions per cluster, and document
@@ -163,7 +163,7 @@ start from the documents, which means they can't ask about a topic that has no
 documents. The benchmark confirms it: on their own they surfaced 0 of 12
 injected gaps. kb_blind asks about what the KB *should* cover instead. It's
 sized per topic rather than as a share of the probe budget, because a topic
-needs at least 20 probes (min_cluster_size) to form a cluster of its own.
+needs at least min_cluster_size probes (15) to form a cluster of its own.
 
 **Thresholds fit on known gaps.** The spec's 0.30/0.60 cutoffs assume scores
 that can reach 1.0. With MiniLM, a question that's actually answered averages
@@ -171,13 +171,20 @@ about 0.67. The benchmark removes documents from the synthetic KB (or cuts a
 topic down to a buried two-sentence mention) and runs the whole audit. It
 labels the resulting clusters, and each threshold goes wherever F1 is highest
 between the known-gap and known-present clusters. Three-tier accuracy goes
-from 28% to 89% in-sample, 73–89% on held-out seeds.
+from 31% to 90% in-sample, 78–96% on held-out seeds.
+
+**min_cluster_size is 15, not the spec's 20.** At 20, a missing topic's ~30
+questions often merged into a neighboring topic or split up instead of
+forming a cluster of their own, and recall on injected gaps was 0.58, below
+the spec's 0.75 minimum. Tested held-out (thresholds re-fit per setting,
+three UMAP layouts), 15 raised recall to 0.81 *and* precision from 0.67 to
+0.77. The full diagnosis is in findings section 8.
 
 **Severity caps cluster size at 50.** The spec's `log(1 + size)` let a big,
 mostly-covered cluster outrank small real depth gaps: compost pile temperature
 (134 probes, 0.579) sat above fungal disease (28 probes, 61% of questions
-unanswered). With the cap, size can move severity by at most 1.29× between the
-smallest and largest cluster. The spec's own "500 at 0.1 beats 10 at 0.05"
+unanswered). With the cap, size can move severity by at most 1.42× between the
+smallest (15-probe) and largest cluster. The spec's own "500 at 0.1 beats 10 at 0.05"
 example still holds.
 
 **The tier and severity answer different questions.** The calibrated tier says
@@ -222,12 +229,14 @@ On the synthetic KB (details in [docs/findings.md](docs/findings.md)):
 ## Known limitations
 
 - **The thresholds are fit on three seeds.** The API credit ran out before
-  seeds 3 and 4. Leave-one-seed-out puts dark_below anywhere from 0.322 to
-  0.364. They're also tied to MiniLM, dispersion SE and this probe mix; change
-  any of those and they need re-fitting.
-- **Thin and absent barely separate.** In-domain absent clusters average 0.336
-  and thin ones 0.348. The dark line between them is a close call, and
-  hydroponics lands on the wrong side of it.
+  seeds 3 and 4. Leave-one-seed-out moves them very little (dark_below
+  0.332–0.335), but three seeds is still three seeds. They're also tied to
+  MiniLM, dispersion SE, min_cluster_size 15 and this probe mix; change any of
+  those and they need re-fitting.
+- **Thin and absent barely separate.** In-domain absent clusters average 0.322
+  and thin ones 0.343. Four thin clusters read as dark on the benchmark, and
+  hydroponics does on the synthetic KB. A two-sentence mention behaves almost
+  like no mention at all.
 - **The adequate line hides depth gaps.** It's fit on "does this topic have
   documents", so clusters of questions the documents don't answer in depth
   (the adversarial ones, mostly) now read as adequate. Catching those needs a
@@ -242,11 +251,13 @@ On the synthetic KB (details in [docs/findings.md](docs/findings.md)):
   thresholds should sit.
 - **Semantically close topics merge.** In one run, tomato and hydroponics
   questions landed in the same cluster; they are both about growing plants.
-  min_cluster_size=20 and EOM selection favor bigger clusters.
-- **Recall on injected gaps is below the spec's minimum.** 0.58 against a
-  0.75 floor on the benchmark (precision 0.78, no false positives). Some
-  removed topics never form their own cluster, and some keep enough related
-  content to score above the dark line.
+  EOM selection favors bigger clusters.
+- **Recall on injected gaps clears the spec's minimum but not its target.**
+  0.83 against a 0.85 target (precision 0.72, target 0.80; no false
+  positives). Of the two remaining misses, one is a topic whose questions the
+  KB still answers 30% of the time after its documents were removed; the
+  other is flagged dark inside a mixed cluster that can't be credited to one
+  topic.
 - **Web search recommendations haven't run for real yet.** The code is tested
   against a fake backend, but the API credit ran out before a live run. The
   estimated improvement is simulated and optimistic: it assumes the retriever
