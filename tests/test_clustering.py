@@ -82,7 +82,7 @@ def test_spec_zone_thresholds(mean, zone):
     assert classify_zone(mean, SPEC_THRESHOLDS) == zone
 
 
-@pytest.mark.parametrize("mean,zone", [(0.30, "DARK"), (0.323, "DARK"), (0.324, "THIN"), (0.40, "THIN"), (0.45, "ADEQUATE")])
+@pytest.mark.parametrize("mean,zone", [(0.30, "DARK"), (0.333, "DARK"), (0.334, "THIN"), (0.408, "THIN"), (0.45, "ADEQUATE")])
 def test_calibrated_default_thresholds(mean, zone):
     assert classify_zone(mean) == zone
 

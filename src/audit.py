@@ -14,7 +14,7 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 
-from src.clustering.hdbscan_clusterer import NOISE, identify_clusters
+from src.clustering.hdbscan_clusterer import DEFAULT_MIN_CLUSTER_SIZE, NOISE, identify_clusters
 from src.clustering.umap_projector import project_for_clustering, project_to_2d
 from src.clustering.zones import (
     DEFAULT_THRESHOLDS,
@@ -122,7 +122,7 @@ def write_csv(outcomes: Sequence[ProbeOutcome], path: str | Path) -> None:
 
 def cluster_outcomes(
     outcomes: Sequence[ProbeOutcome],
-    min_cluster_size: int = 20,
+    min_cluster_size: int = DEFAULT_MIN_CLUSTER_SIZE,
     min_samples: int = 5,
     thresholds: ZoneThresholds = DEFAULT_THRESHOLDS,
     purity_rule: Optional[PurityRule] = None,

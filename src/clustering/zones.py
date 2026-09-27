@@ -28,11 +28,12 @@ class ZoneThresholds:
 
 
 SPEC_THRESHOLDS = ZoneThresholds(0.30, 0.60)
-# Fit on the gap-injection benchmark (3 seeds, 46 labeled clusters) with MiniLM
-# embeddings and dispersion SE; see docs/findings.md section 4. With MiniLM a
-# well-answered probe tops out around 0.70, so the spec's 0.60 line put 25 of 28
-# known-present clusters in THIN. Re-fit these if the embedding model changes.
-DEFAULT_THRESHOLDS = ZoneThresholds(0.324, 0.400)
+# Fit on the gap-injection benchmark (3 seeds, 59 labeled clusters, clustered
+# at min_cluster_size 15) with MiniLM embeddings and dispersion SE; see
+# docs/findings.md sections 4 and 8. With MiniLM a well-answered probe tops out
+# around 0.70, so the spec's 0.60 line put 31 of 36 known-present clusters in
+# THIN. Re-fit these if the embedding model or min_cluster_size changes.
+DEFAULT_THRESHOLDS = ZoneThresholds(0.334, 0.408)
 
 
 @dataclass(frozen=True)
@@ -76,8 +77,8 @@ def label_purity(labels: Sequence[Optional[str]]) -> Optional[float]:
 # The spec's size term, log(1 + size), let a big mostly-covered cluster
 # outrank small real depth gaps: compost pile temperature (134 probes, mean
 # 0.579) scored above fungal disease (28 probes, 0.432, 61% of probes
-# unanswered). Capping the size at 50 (2.5x min_cluster_size) bounds the size
-# effect at log(51)/log(21) = 1.29x over the smallest possible cluster. The
+# unanswered). Capping the size at 50 bounds the size effect at
+# log(51)/log(16) = 1.42x over the smallest possible cluster (min_cluster_size 15). The
 # spec's example still holds: 500 probes at 0.1 outrank 10 at 0.05.
 # See docs/findings.md section 6.
 SEVERITY_SIZE_CAP = 50

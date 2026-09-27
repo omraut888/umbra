@@ -27,7 +27,7 @@ from src.probe_generation.taxonomy import (
 # remaining shares are renormalized.
 STRATEGY_SHARES = {"taxonomy": 0.40, "adversarial": 0.30, "counterfactual": 0.20}
 # kb_blind isn't part of the share split. It's sized per topic instead: a topic
-# needs at least min_cluster_size probes (20) to come out as its own cluster,
+# needs at least min_cluster_size probes (15) to come out as its own cluster,
 # and a 10% share of 1000 spread over 15 topics would leave every missing topic
 # scattered in noise.
 ALL_STRATEGIES = (*STRATEGY_SHARES, "kb_blind")
