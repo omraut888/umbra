@@ -33,8 +33,8 @@ def test_split_budget_rejects_unknown():
 
 
 def test_parse_topics():
-    assert parse_topics("1. Beekeeping\n- **Soil microbiology**\nHere are topics:\n\nx\nGreenhouse heating") == [
-        "Beekeeping", "Soil microbiology", "Greenhouse heating"]
+    assert parse_topics("# Boundary Topics\n1. Beekeeping\n- **Soil microbiology**\nHere are topics:\n\nx\n"
+                        "## Also\nGreenhouse heating") == ["Beekeeping", "Soil microbiology", "Greenhouse heating"]
 
 
 async def test_adversarial_runs_hyde_pipeline():

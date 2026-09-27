@@ -40,6 +40,8 @@ _BULLET = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s*")
 def parse_topics(text: str) -> List[str]:
     topics = []
     for line in text.splitlines():
+        if line.lstrip().startswith("#"):  # Haiku sometimes adds a markdown heading
+            continue
         t = _BULLET.sub("", line).strip().strip('"').strip("*").strip()
         if 3 <= len(t) <= 80 and not t.endswith(":"):
             topics.append(t)
