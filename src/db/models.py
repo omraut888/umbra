@@ -1,16 +1,16 @@
 """SQLAlchemy models for audit storage (spec §8).
 
-Phase 1 tables: audit_runs and probe_results (one row per probe, holding the
-probe query and its scores). umap_x / umap_y / cluster_id are created now but
-stay NULL until Phase 2 clustering fills them in. cluster_summaries and
-kb_health_history belong to Phases 2 and 4.
+audit_runs, probe_results (one row per probe: query, scores, cluster, UMAP
+coordinates) and cluster_summaries. kb_health_history comes with monitoring.
 
-Columns beyond the spec, all needed to reproduce a Phase 1 audit:
+Columns beyond the spec, all needed to reproduce an audit:
     audit_runs.endpoint_url, audit_runs.kb_path   what was audited
     probe_results.hp_computed      whether HP was computed (preliminary score in the HP band)
     probe_results.preliminary_score  the RC+SE-only score used for the HP gate
     probe_results.probe_topic      taxonomy topic the probe was generated from
     probe_results.answer, .error   the RAG system's answer, or the query failure
+    probe_results.umap_10d         the clustering coordinates (umap_x/y are display only)
+    cluster_summaries.centroid_x/y, .strategy_mix, .representative_queries
 """
 
 from __future__ import annotations
@@ -45,6 +45,7 @@ class AuditRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     probes: Mapped[List["ProbeResult"]] = relationship(back_populates="audit_run", cascade="all, delete-orphan")
+    clusters: Mapped[List["ClusterSummary"]] = relationship(back_populates="audit_run", cascade="all, delete-orphan")
 
 
 class ProbeResult(Base):
@@ -58,6 +59,7 @@ class ProbeResult(Base):
     query_embedding = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
     umap_x: Mapped[Optional[float]] = mapped_column(Float)
     umap_y: Mapped[Optional[float]] = mapped_column(Float)
+    umap_10d = mapped_column(Vector(10), nullable=True)
     cluster_id: Mapped[Optional[int]] = mapped_column(Integer)
     coverage_score: Mapped[Optional[float]] = mapped_column(Float)
     rc_score: Mapped[Optional[float]] = mapped_column(Float)
@@ -72,3 +74,25 @@ class ProbeResult(Base):
     error: Mapped[Optional[str]] = mapped_column(Text)
 
     audit_run: Mapped[AuditRun] = relationship(back_populates="probes")
+
+
+class ClusterSummary(Base):
+    __tablename__ = "cluster_summaries"
+
+    cluster_id: Mapped[int] = mapped_column(Integer, primary_key=True)  # -1 = noise bucket
+    report_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("audit_runs.report_id", ondelete="CASCADE"), primary_key=True
+    )
+    cluster_name: Mapped[Optional[str]] = mapped_column(String(100))
+    zone: Mapped[Optional[str]] = mapped_column(String(10))
+    mean_cs: Mapped[Optional[float]] = mapped_column(Float)
+    std_cs: Mapped[Optional[float]] = mapped_column(Float)
+    severity: Mapped[Optional[float]] = mapped_column(Float)
+    query_count: Mapped[Optional[int]] = mapped_column(Integer)
+    centroid_emb = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+    centroid_x: Mapped[Optional[float]] = mapped_column(Float)
+    centroid_y: Mapped[Optional[float]] = mapped_column(Float)
+    strategy_mix: Mapped[Optional[dict]] = mapped_column(JSONB)
+    representative_queries: Mapped[Optional[list]] = mapped_column(JSONB)
+
+    audit_run: Mapped[AuditRun] = relationship(back_populates="clusters")
