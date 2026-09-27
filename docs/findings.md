@@ -3,6 +3,88 @@
 Things I found while building Umbra that change how the spec should be read.
 Each one comes with the data that backs it up, so it can be rechecked.
 
+## Current state
+
+The two-minute version. The numbered sections below have the evidence.
+
+**Where it stands.** Phases 1–3 are built: probe generation, three-signal
+scoring, UMAP + HDBSCAN clustering, zone tiers and severity, recommendations,
+the GapReport JSON, the Dash dashboard, and a rerunnable gap-injection
+benchmark. On that benchmark (3 seeds, known gaps removed from a synthetic
+KB), dark-zone detection clears every one of the spec's §10 minimums:
+
+| metric | result | spec target | spec minimum |
+|---|---|---|---|
+| recall | 0.83 | 0.85 | 0.75 |
+| precision | 0.72 | 0.80 | 0.70 |
+| false positive rate | 0.00 | ≤ 0.15 | ≤ 0.25 |
+
+**The decisions that differ from the spec, and why:**
+
+- **min_cluster_size is 15, not 20** (section 8). This is the final decision.
+  At 20, a removed topic's questions often merged into a neighboring topic
+  instead of forming their own cluster, and recall was 0.58, below the
+  spec's minimum. Tested held-out with thresholds re-fit and three UMAP
+  layouts, 15 gave recall 0.81 and precision 0.77, against 0.53 and 0.67 at
+  20, and the fitted thresholds stopped moving between seeds.
+- **Recall was prioritized over precision, deliberately.** Both clear the
+  minimums, but precision (0.72) sits nearer its floor than recall (0.83).
+  The cost is four *thin* topics that now read DARK. Each has a
+  two-sentence mention left, and the KB answers 0–10% of their questions.
+  Missing a real gap costs more than flagging a nearly-empty topic a tier
+  too dark, and no *covered* topic is ever flagged (FPR 0).
+- **Zone thresholds are 0.334 / 0.408, fit on known gaps** (sections 2, 4,
+  8), not the spec's 0.30 / 0.60. With MiniLM embeddings a fully answered
+  question averages about 0.67, so the spec's 0.60 line called most covered
+  topics thin. The tier means "does this topic exist in the KB", because
+  that's what the benchmark labels. Depth gaps inside covered topics are
+  ranked by severity instead.
+- **Semantic entropy uses mean pairwise distance, not the spec's histogram
+  entropy** (section 1). The spec formula scores mutually unrelated chunks as
+  *focused*, because their distances all land in one histogram bin. It got
+  15 of 20 hand-labeled cases right, against 20 of 20 for dispersion. The
+  original is kept as `--se-method spec`.
+- **A fourth probe strategy, kb_blind** (sections 3 and 5). Taxonomy,
+  adversarial, and counterfactual generation all start from the KB's own
+  content, so they can't ask about a topic that has no documents. On the
+  benchmark they surfaced 0 of 12 removed topics on their own. kb_blind
+  writes questions from a list of what the KB *should* cover, without
+  reading it, and is what makes absolute-gap detection possible at all.
+- **Severity caps cluster size at 50** (section 6). The spec's
+  `log(1 + size)` let a large, mostly covered cluster (compost pile
+  temperature, 134 probes) outrank small real depth gaps (pest control,
+  fungal disease). With the cap, both depth gaps rank above every compost
+  and tomato cluster.
+- **Purity doesn't help, so it isn't used** (sections 4 and 8). Using
+  cluster purity to split DARK from THIN did worse than the score alone at
+  both cluster sizes (held-out dark F1 0.60 vs 0.78 at 15). Absent and thin
+  clusters have the same purity. It's kept as an option and documented as a
+  negative result.
+
+**Open, and blocked on API credits.** Everything below needs new LLM calls,
+and the key currently returns "credit balance too low":
+
+- **Seeds 3 and 4 of the 5-seed calibration.** The thresholds and the recall
+  above are from seeds 0–2. A background job will run them automatically at
+  min_cluster_size 15.
+- **More than 30 kb_blind probes per topic.** Recall rose steadily from 15
+  to 30 probes per topic (section 8). Whether it keeps rising past 30 is
+  untested, because only fewer-than-generated can be tested by subsampling.
+- **Real web search.** External recommendations only run against a fake
+  backend in tests. Until the real path is validated, treat any
+  `estimated_improvement` in a report as coming from KB-internal
+  recommendations only, and as optimistic.
+- **Re-clustering the Phase 2 dashboard run.** `out/phase2.csv` was clustered
+  at min_cluster_size 20. Its report already uses the new thresholds, but
+  re-clustering at 15 needs new cluster names from Haiku.
+
+**Known limits that aren't bugs.** kb_blind only finds gaps inside the topic
+list it's given; gaps nobody anticipated still need real user queries.
+Removing a topic's documents doesn't always remove the topic: one missed gap
+still had 30% of its questions answered by another document. And every
+threshold here is tied to MiniLM, dispersion SE, and min_cluster_size 15;
+re-fit them (`umbra benchmark calibrate`) if any of those changes.
+
 ## 1. The spec's semantic entropy formula reads irrelevant retrievals as focused
 
 ### What the spec says
