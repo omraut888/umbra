@@ -93,7 +93,8 @@ def test_thresholds_must_be_ordered():
 
 
 def test_severity_formula_and_ordering():
-    assert severity(0.1, 0.0, 500) == pytest.approx(0.9 * math.log(501))
+    assert severity(0.1, 0.0, 500, size_cap=None) == pytest.approx(0.9 * math.log(501))
+    assert severity(0.1, 0.0, 500) == pytest.approx(0.9 * math.log(51))
     # spec §6 example: 500 probes at 0.1 are more urgent than 10 averaging 0.05
     assert severity(0.1, 0.02, 500) > severity(0.05, 0.02, 10)
     # same mean and size: the more consistent cluster ranks higher
@@ -217,3 +218,12 @@ def test_purity_rule_only_splits_dark_from_thin():
     assert classify_zone(0.30, th, purity=0.2, purity_rule=rule) == "THIN"  # score alone would say DARK
     assert classify_zone(0.30, th, purity=None, purity_rule=rule) == "DARK"  # no labels: fall back to score
     assert PurityRule(0.6, dark_if_above=False).is_dark(0.5)
+
+
+def test_severity_cap_keeps_big_covered_clusters_below_small_depth_gaps():
+    # the phase 2 numbers: compost pile temperature vs fungal disease / pest control
+    compost = severity(0.579, 0.128, 134)
+    assert severity(0.432, 0.125, 28) > compost
+    assert severity(0.444, 0.131, 47) > compost
+    # uncapped, the spec formula gets this wrong
+    assert severity(0.432, 0.125, 28, size_cap=None) < severity(0.579, 0.128, 134, size_cap=None)

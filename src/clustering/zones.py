@@ -73,10 +73,19 @@ def label_purity(labels: Sequence[Optional[str]]) -> Optional[float]:
     return max(named.count(x) for x in set(named)) / len(labels)
 
 
-def severity(mean_cs: float, std_cs: float, size: int) -> float:
-    # (1 - mean) * log(1 + size) * (1 - std): big, consistently failing clusters
-    # come first. 500 probes all at 0.1 outrank 10 probes averaging 0.05.
-    return (1.0 - mean_cs) * math.log1p(size) * (1.0 - std_cs)
+# The spec's size term, log(1 + size), let a big mostly-covered cluster
+# outrank small real depth gaps: compost pile temperature (134 probes, mean
+# 0.579) scored above fungal disease (28 probes, 0.432, 61% of probes
+# unanswered). Capping the size at 50 (2.5x min_cluster_size) bounds the size
+# effect at log(51)/log(21) = 1.29x over the smallest possible cluster. The
+# spec's example still holds: 500 probes at 0.1 outrank 10 at 0.05.
+# See docs/findings.md section 6.
+SEVERITY_SIZE_CAP = 50
+
+
+def severity(mean_cs: float, std_cs: float, size: int, size_cap: int | None = SEVERITY_SIZE_CAP) -> float:
+    effective = size if size_cap is None else min(size, size_cap)
+    return (1.0 - mean_cs) * math.log1p(effective) * (1.0 - std_cs)
 
 
 @dataclass
