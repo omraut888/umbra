@@ -16,7 +16,15 @@ import numpy as np
 
 from src.clustering.hdbscan_clusterer import NOISE, identify_clusters
 from src.clustering.umap_projector import project_for_clustering, project_to_2d
-from src.clustering.zones import DEFAULT_THRESHOLDS, ClusterCoverage, ZoneThresholds, compute_cluster_coverage
+from src.clustering.zones import (
+    DEFAULT_THRESHOLDS,
+    ClusterCoverage,
+    PurityRule,
+    ZoneThresholds,
+    classify_zone,
+    compute_cluster_coverage,
+    label_purity,
+)
 from src.connectors.base import RAGConnector, RAGResponse
 from src.probe_generation.taxonomy import Probe
 from src.scoring.composite import CoverageScore
@@ -32,7 +40,7 @@ CSV_FIELDS = [
 ]
 
 CLUSTER_CSV_FIELDS = [
-    "cluster_id", "name", "zone", "query_count", "mean_cs", "std_cs", "severity",
+    "cluster_id", "name", "zone", "query_count", "mean_cs", "std_cs", "severity", "purity",
     "strategy_mix", "representative_queries",
 ]
 
@@ -117,6 +125,7 @@ def cluster_outcomes(
     min_cluster_size: int = 20,
     min_samples: int = 5,
     thresholds: ZoneThresholds = DEFAULT_THRESHOLDS,
+    purity_rule: Optional[PurityRule] = None,
 ) -> List[ClusterCoverage]:
     """Project, cluster and zone the scored probes. Fills cluster/UMAP fields in place."""
     scored = [o for o in outcomes if o.score is not None]
@@ -137,8 +146,14 @@ def cluster_outcomes(
     strategies = {}
     for o in scored:
         strategies.setdefault(o.cluster_id, Counter())[o.probe.strategy] += 1
+    blind_labels = {}
+    for o in scored:
+        blind_labels.setdefault(o.cluster_id, []).append(o.probe.topic if o.probe.strategy == "kb_blind" else None)
     for c in clusters:
         c.strategy_mix = dict(strategies[c.cluster_id].most_common())
+        c.purity = label_purity(blind_labels[c.cluster_id])
+        if purity_rule is not None and not c.is_noise:
+            c.zone = classify_zone(c.mean_cs, thresholds, c.purity, purity_rule)
     log.info("%d clusters + noise from %d probes", clustering.n_clusters, len(scored))
     return clusters
 
@@ -151,6 +166,7 @@ def write_cluster_csv(clusters: Sequence[ClusterCoverage], path: str | Path) -> 
             writer.writerow({
                 "cluster_id": c.cluster_id, "name": c.name or "", "zone": c.zone, "query_count": c.query_count,
                 "mean_cs": f"{c.mean_cs:.4f}", "std_cs": f"{c.std_cs:.4f}", "severity": f"{c.severity:.4f}",
+                "purity": "" if c.purity is None else f"{c.purity:.4f}",
                 "strategy_mix": json.dumps(c.strategy_mix),
                 "representative_queries": json.dumps(c.representative_queries),
             })

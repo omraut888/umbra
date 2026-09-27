@@ -35,12 +35,42 @@ SPEC_THRESHOLDS = ZoneThresholds(0.30, 0.60)
 DEFAULT_THRESHOLDS = ZoneThresholds(0.324, 0.400)
 
 
-def classify_zone(mean_cs: float, thresholds: ZoneThresholds = DEFAULT_THRESHOLDS) -> str:
-    if mean_cs < thresholds.dark_below:
-        return "DARK"
-    if mean_cs <= thresholds.adequate_above:
-        return "THIN"
-    return "ADEQUATE"
+@dataclass(frozen=True)
+class PurityRule:
+    """Decides DARK vs THIN for clusters the score already says aren't adequate."""
+
+    threshold: float
+    dark_if_above: bool  # which side is DARK is fit on the benchmark, not assumed
+
+    def is_dark(self, purity: float) -> bool:
+        return purity >= self.threshold if self.dark_if_above else purity < self.threshold
+
+
+def classify_zone(
+    mean_cs: float,
+    thresholds: ZoneThresholds = DEFAULT_THRESHOLDS,
+    purity: Optional[float] = None,
+    purity_rule: Optional[PurityRule] = None,
+) -> str:
+    if mean_cs > thresholds.adequate_above:
+        return "ADEQUATE"
+    if purity_rule is not None and purity is not None:
+        return "DARK" if purity_rule.is_dark(purity) else "THIN"
+    return "DARK" if mean_cs < thresholds.dark_below else "THIN"
+
+
+def label_purity(labels: Sequence[Optional[str]]) -> Optional[float]:
+    """Share of a cluster's probes that carry its most common topic label.
+
+    The denominator is every probe in the cluster, labeled or not. In an audit
+    the labels are kb_blind topic names (from the operator's topic list); the
+    benchmark can also trace counterfactual probes to a topic through their
+    source chunk. None when nothing in the cluster is labeled.
+    """
+    named = [x for x in labels if x]
+    if not named:
+        return None
+    return max(named.count(x) for x in set(named)) / len(labels)
 
 
 def severity(mean_cs: float, std_cs: float, size: int) -> float:
@@ -63,6 +93,7 @@ class ClusterCoverage:
     representative_queries: List[str] = field(default_factory=list)
     name: Optional[str] = None
     strategy_mix: Dict[str, int] = field(default_factory=dict)
+    purity: Optional[float] = None
 
     @property
     def is_noise(self) -> bool:

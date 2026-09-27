@@ -198,3 +198,22 @@ def test_clusters_and_umap_coordinates_persist():
     assert sorted(r.cluster_id for r in rows) == sorted(c.cluster_id for c in clusters)
     assert sum(r.query_count for r in rows) == 60 and all(r[2] == 384 for r in rows)
     assert dims == [(10,)]
+
+
+def test_label_purity_uses_all_probes_as_denominator():
+    from src.clustering.zones import label_purity
+
+    assert label_purity(["a", "a", "b", None]) == 0.5
+    assert label_purity([None, None]) is None
+
+
+def test_purity_rule_only_splits_dark_from_thin():
+    from src.clustering.zones import PurityRule
+
+    th = ZoneThresholds(0.324, 0.400)
+    rule = PurityRule(0.6, dark_if_above=True)
+    assert classify_zone(0.45, th, purity=0.9, purity_rule=rule) == "ADEQUATE"  # score decides adequate
+    assert classify_zone(0.38, th, purity=0.9, purity_rule=rule) == "DARK"  # score alone would say THIN
+    assert classify_zone(0.30, th, purity=0.2, purity_rule=rule) == "THIN"  # score alone would say DARK
+    assert classify_zone(0.30, th, purity=None, purity_rule=rule) == "DARK"  # no labels: fall back to score
+    assert PurityRule(0.6, dark_if_above=False).is_dark(0.5)

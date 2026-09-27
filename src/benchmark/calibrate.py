@@ -11,20 +11,51 @@ Stability is checked with leave-one-seed-out: fit on four seeds, score the fifth
 
 from __future__ import annotations
 
+import csv
 import json
 import statistics as st
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
-from src.clustering.zones import SPEC_THRESHOLDS, ZoneThresholds, classify_zone
+from src.clustering.zones import SPEC_THRESHOLDS, PurityRule, ZoneThresholds, classify_zone, label_purity
+from src.data.synthetic_kb_builder import ALL_DOCS
+
+DOC_TOPIC = {d.doc_id: d.topic for d in ALL_DOCS}
 
 EXPECTED = {"absent": "DARK", "thin": "THIN", "present": "ADEQUATE"}
 
 
 def load(out_dir: Path) -> List[dict]:
-    return [json.loads(p.read_text()) for p in sorted(out_dir.glob("seed_*/result.json"))]
+    results = []
+    for path in sorted(out_dir.glob("seed_*/result.json")):
+        r = json.loads(path.read_text())
+        add_purities(r, list(csv.DictReader(open(path.parent / "probes.csv"))))
+        results.append(r)
+    return results
+
+
+def add_purities(result: dict, rows: List[dict]) -> None:
+    """Two purity values per cluster.
+
+    gt_purity uses the synthetic KB's ground truth: kb_blind probes carry their
+    topic, and counterfactual probes trace to one through their source chunk's
+    document. It can't be computed in a real audit, so it's an upper bound.
+    blind_purity uses only kb_blind topic labels, which a real audit has
+    whenever kb_blind runs.
+    """
+    members = defaultdict(list)
+    for r in rows:
+        if r["cluster_id"] != "":
+            members[r["cluster_id"]].append(r)
+    for c in result["clusters"]:
+        ms = members[str(c["cluster_id"])]
+        blind = [m["probe_topic"] if m["generation_strategy"] == "kb_blind" else None for m in ms]
+        traced = [DOC_TOPIC.get(m["probe_topic"].split("#")[0]) if m["generation_strategy"] == "counterfactual" else b
+                  for m, b in zip(ms, blind)]
+        c["blind_purity"] = label_purity(blind)
+        c["gt_purity"] = label_purity(traced)
 
 
 def prf(scores: Sequence[float], positive: Sequence[bool], t: float, below: bool) -> Tuple[float, float, float]:
@@ -75,6 +106,67 @@ def spec10_metrics(result: dict, th: ZoneThresholds) -> Dict[str, float]:
     }
 
 
+def zone_of(c: dict, th: ZoneThresholds, key: Optional[str] = None, rule: Optional[PurityRule] = None) -> str:
+    return classify_zone(c["mean_cs"], th, c.get(key) if key else None, rule)
+
+
+def fit_purity_rule(clusters: Sequence[dict], th: ZoneThresholds, key: str) -> PurityRule:
+    """Fit on the clusters the score already calls not-adequate: absent -> DARK."""
+    pool = [c for c in clusters if c["mean_cs"] <= th.adequate_above and c[key] is not None]
+    xs = [c[key] for c in pool]
+    absent = [c["tier"] == "absent" for c in pool]
+    best = None
+    for dark_if_above in (True, False):
+        # prf's "below" means positive when x < t, i.e. dark_if_above=False
+        t = fit_threshold(xs, absent, below=not dark_if_above)
+        f1 = prf(xs, absent, t, below=not dark_if_above)[2]
+        if best is None or f1 > best[0]:
+            best = (f1, PurityRule(t, dark_if_above))
+    return best[1]
+
+
+def tier_prf(clusters: Sequence[dict], th: ZoneThresholds, key=None, rule=None) -> Dict[str, Tuple[float, float, float]]:
+    pred = [zone_of(c, th, key, rule) for c in clusters]
+    out = {}
+    for tier, zone in (("absent", "DARK"), ("thin", "THIN")):
+        tp = sum(p == zone and c["tier"] == tier for p, c in zip(pred, clusters))
+        n_pred = sum(p == zone for p in pred)
+        n_true = sum(c["tier"] == tier for c in clusters)
+        precision = tp / n_pred if n_pred else 0.0
+        recall = tp / n_true if n_true else 0.0
+        out[tier] = (precision, recall, 2 * precision * recall / (precision + recall) if precision + recall else 0.0)
+    out["accuracy"] = sum(p == EXPECTED[c["tier"]] for p, c in zip(pred, clusters)) / len(clusters)
+    return out
+
+
+def purity_comparison(clusters: List[dict], seeds: Sequence[int]) -> dict:
+    variants = {"score only": None, "gt purity (upper bound)": "gt_purity", "kb_blind purity": "blind_purity"}
+    out = {}
+    th = fit(clusters)
+    for name, key in variants.items():
+        rule = fit_purity_rule(clusters, th, key) if key else None
+        in_sample = tier_prf(clusters, th, key, rule)
+        loso = []
+        for seed in seeds:
+            train = [c for c in clusters if c["seed"] != seed]
+            test = [c for c in clusters if c["seed"] == seed]
+            if not test:
+                continue
+            th_s = fit(train)
+            rule_s = fit_purity_rule(train, th_s, key) if key else None
+            loso.append(tier_prf(test, th_s, key, rule_s))
+        out[name] = {
+            "rule": None if rule is None else {"threshold": rule.threshold, "dark_if_above": rule.dark_if_above},
+            "in_sample": in_sample,
+            "loso_mean": {
+                "absent_f1": st.fmean(x["absent"][2] for x in loso),
+                "thin_f1": st.fmean(x["thin"][2] for x in loso),
+                "accuracy": st.fmean(x["accuracy"] for x in loso),
+            },
+        }
+    return out
+
+
 def summarize(results: List[dict]) -> dict:
     clusters = [dict(c, seed=r["seed"]) for r in results for c in r["clusters"] if c["tier"]]
     calibrated = fit(clusters)
@@ -121,7 +213,14 @@ def summarize(results: List[dict]) -> dict:
     for r in results:
         strategy_totals.update(r["strategy_counts"])
 
+    purity_by_tier = {
+        key: {t: [c[key] for c in clusters if c["tier"] == t and c[key] is not None] for t in EXPECTED}
+        for key in ("gt_purity", "blind_purity")
+    }
+
     return {
+        "purity": purity_comparison(clusters, [r["seed"] for r in results]),
+        "purity_by_tier": {k: by_tier(v) for k, v in purity_by_tier.items()},
         "n_seeds": len(results),
         "n_clusters": sum(len(r["clusters"]) for r in results),
         "n_labeled": len(clusters),
@@ -158,6 +257,18 @@ def print_summary(s: dict) -> None:
     for row in s["loso"]:
         print(f"  seed {row['seed']}: fit {row['thresholds'][0]:.3f}/{row['thresholds'][1]:.3f} on the others -> "
               f"held-out accuracy {row['accuracy']:.0%} (spec {row['spec_accuracy']:.0%})")
+    print("\nPurity by true tier (labeled clusters)")
+    for key, tiers in s["purity_by_tier"].items():
+        for t, d in tiers.items():
+            print(f"  {key:<13} {t:<8} n={d['n']:<3} mean {d['mean']:.2f}  p10 {d['p10']:.2f}  p90 {d['p90']:.2f}")
+    print("\nDARK vs THIN inside not-adequate: score line vs purity rule")
+    print(f"  {'':<25}{'rule':<22}{'dark P/R/F1':<18}{'thin P/R/F1':<18}{'3-tier acc':<11}{'LOSO dark F1':<14}{'LOSO thin F1':<14}LOSO acc")
+    for name, v in s["purity"].items():
+        ins, lo = v["in_sample"], v["loso_mean"]
+        rule = "-" if v["rule"] is None else f"dark if {'>=' if v['rule']['dark_if_above'] else '<'} {v['rule']['threshold']:.3f}"
+        fmt = lambda x: f"{x[0]:.2f}/{x[1]:.2f}/{x[2]:.2f}"
+        print(f"  {name:<25}{rule:<22}{fmt(ins['absent']):<18}{fmt(ins['thin']):<18}{ins['accuracy']:<11.0%}"
+              f"{lo['absent_f1']:<14.2f}{lo['thin_f1']:<14.2f}{lo['accuracy']:.0%}")
     print(f"\nStrategy mix of probes in absent-labeled clusters: {s['absent_cluster_strategy_mix']}")
     print(f"All probes by strategy: {s['strategy_totals']}")
 

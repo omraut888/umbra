@@ -122,7 +122,7 @@ async def run_seed(seed: int, out_dir: Path, n_probes: int, per_topic: int, comp
 
     chunks = load_chunks(seed_dir / "kb")
     topics = [TopicSpec(u, d) for u, d in UNITS.items()]
-    probes, _ = await generate_probe_set(
+    probes, taxonomy = await generate_probe_set(
         chunks, n_probes, ["taxonomy", "adversarial", "counterfactual", "kb_blind"], complete,
         kb_blind_topics=topics, kb_blind_per_topic=per_topic)
 
@@ -132,6 +132,7 @@ async def run_seed(seed: int, out_dir: Path, n_probes: int, per_topic: int, comp
     clusters = await asyncio.to_thread(cluster_outcomes, outcomes)
 
     write_csv(outcomes, seed_dir / "probes.csv")
+    (seed_dir / "probes.taxonomy.json").write_text(json.dumps([t.as_dict() for t in taxonomy or []], indent=2) + "\n")
     write_cluster_csv(clusters, seed_dir / "probes.clusters.csv")
     result = {
         "seed": seed,

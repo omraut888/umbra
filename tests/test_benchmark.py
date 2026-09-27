@@ -64,3 +64,15 @@ def test_fit_orders_thresholds():
                 [(0.2, "absent"), (0.25, "absent"), (0.35, "thin"), (0.4, "thin"), (0.6, "present"), (0.65, "present")]]
     th = fit(clusters)
     assert 0.25 < th.dark_below < 0.35 and 0.4 < th.adequate_above < 0.6
+
+
+def test_fit_purity_rule_learns_direction():
+    from src.benchmark.calibrate import fit_purity_rule
+    from src.clustering.zones import ZoneThresholds
+
+    th = ZoneThresholds(0.324, 0.400)
+    clusters = [{"mean_cs": 0.33, "tier": "absent", "p": x} for x in (0.2, 0.25, 0.3)] + \
+               [{"mean_cs": 0.33, "tier": "thin", "p": x} for x in (0.7, 0.8, 0.9)] + \
+               [{"mean_cs": 0.6, "tier": "present", "p": 0.1}]  # adequate by score: ignored
+    rule = fit_purity_rule(clusters, th, "p")
+    assert rule.dark_if_above is False and 0.3 < rule.threshold < 0.7
