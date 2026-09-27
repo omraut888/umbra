@@ -237,6 +237,18 @@ def report(audit_csv, kb_path, output, web_search, top_k, zone_thresholds, dashb
     click.echo(f"Wrote {output}")
 
 
+@cli.command()
+@click.option("--report", "report_path", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--audit", "audit_csv", type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              help="Probe CSV for the map points (default: the audit recorded in the report).")
+@click.option("--port", default=8050, show_default=True)
+def dashboard(report_path, audit_csv, port) -> None:
+    """Serve the coverage map and cluster ranking for a GapReport."""
+    from src.dashboard.app import main
+
+    main(str(report_path), str(audit_csv) if audit_csv else None, port=port)
+
+
 def _echo_group_means(label: str, pairs) -> None:
     groups = defaultdict(list)
     for key, score in pairs:
