@@ -342,21 +342,37 @@ drops to DARK, which is the thin/absent overlap above showing up on real
 data. At 0.311 it's closer to the in-domain absent clusters than to anything
 present.
 
-### The tradeoff this makes
+### What the tier means, and what it doesn't
 
-The calibrated THIN band is 0.324–0.400, much narrower than the spec's
-0.30–0.60. On the full KB, 23 of 26 clusters are now ADEQUATE, including
-clusters built mostly from adversarial probes, like "Vegetable Garden Pest
-Control" (0.444) and "Fungal Disease Prevention" (0.432). Those were THIN
-before, and they are real depth gaps inside covered topics.
+**The calibrated tier answers "does this topic exist in the KB", not "is
+there enough depth".** That's what the gap-injection ground truth labels: a
+topic is present if its documents are there, absent if they were removed, thin
+if one buried passage is left. A present topic's cluster still contains plenty
+of questions its documents don't answer (section 2), and the thresholds were
+fit to call those clusters ADEQUATE anyway, because by the benchmark's
+definition they are.
 
-That follows from what the benchmark labels. "Present" means the topic has
-its documents, and a present cluster still includes plenty of questions the
-documents don't answer (section 2). So the adequate line is calibrated to
-"is this topic in the KB", not "can the KB answer questions about it in
-depth". If Phase 3 recommendations should target depth gaps, the upper
-threshold needs a different ground truth, e.g. clusters labeled by the share
-of probes the cross-encoder says are answered.
+So on the full KB, "Vegetable Garden Pest Control" (0.444) and "Fungal Disease
+Prevention" (0.432) reading ADEQUATE is consistent with the ground truth, not a
+bug. Pest management and tomato disease both have documents. The questions in
+those clusters (mostly adversarial probes) go past what those documents say.
+That's a depth gap, and the tier isn't built to show it. The calibrated THIN
+band is narrow (0.324–0.400, vs the spec's 0.30–0.60), and 23 of the 26
+clusters on the full KB read ADEQUATE.
+
+**Severity is the signal for depth, regardless of tier.** It's computed the
+same way for every cluster, `(1 − mean_cs) · log(1 + size) · (1 − std_cs)`, so
+it keeps ranking low-scoring, consistent clusters even after they're called
+adequate. Among the ADEQUATE clusters on the full KB, Pest Control (1.87) and
+Fungal Disease (1.67) rank above well-covered ones like the C:N-ratio cluster
+(1.14) and tomato ripening (1.10). One caveat: severity grows with cluster
+size, so a large, reasonably covered cluster can outrank a small depth gap
+(compost pile temperature, 134 probes at 0.579, scores 1.80).
+
+**For Phase 3:** the report must keep severity-sorted output visible for
+ADEQUATE clusters too, not just list DARK and THIN zones. A report filtered to
+non-adequate tiers would hide exactly the depth gaps that adversarial probing
+is good at finding.
 
 Current defaults: `ZoneThresholds(0.324, 0.400)` in `src/clustering/zones.py`,
 overridable with `umbra audit --zone-thresholds`. `SPEC_THRESHOLDS` stays
