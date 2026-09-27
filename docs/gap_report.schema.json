@@ -1,0 +1,462 @@
+{
+  "$defs": {
+    "ClusterReport": {
+      "properties": {
+        "cluster_id": {
+          "description": "-1 is the HDBSCAN noise bucket",
+          "title": "Cluster Id",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "zone": {
+          "enum": [
+            "DARK",
+            "THIN",
+            "ADEQUATE"
+          ],
+          "title": "Zone",
+          "type": "string"
+        },
+        "mean_cs": {
+          "title": "Mean Cs",
+          "type": "number"
+        },
+        "std_cs": {
+          "title": "Std Cs",
+          "type": "number"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "number"
+        },
+        "severity_rank": {
+          "title": "Severity Rank",
+          "type": "integer"
+        },
+        "query_count": {
+          "title": "Query Count",
+          "type": "integer"
+        },
+        "unanswered_share": {
+          "description": "share of probes the cross-encoder found no answer for (HP >= 0.5, or preliminary score below the HP band)",
+          "title": "Unanswered Share",
+          "type": "number"
+        },
+        "purity": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Purity"
+        },
+        "strategy_mix": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Strategy Mix",
+          "type": "object"
+        },
+        "centroid_x": {
+          "title": "Centroid X",
+          "type": "number"
+        },
+        "centroid_y": {
+          "title": "Centroid Y",
+          "type": "number"
+        },
+        "representative_queries": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Representative Queries",
+          "type": "array"
+        },
+        "sample_queries": {
+          "description": "spec \u00a714: examples to sanity-check before acting on the zone",
+          "items": {
+            "type": "string"
+          },
+          "title": "Sample Queries",
+          "type": "array"
+        },
+        "recommendation_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "why this cluster got recommendations, or null if it didn't",
+          "title": "Recommendation Reason"
+        },
+        "recommendations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DocumentRec"
+          },
+          "title": "Recommendations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cluster_id",
+        "name",
+        "zone",
+        "mean_cs",
+        "std_cs",
+        "severity",
+        "severity_rank",
+        "query_count",
+        "unanswered_share",
+        "strategy_mix",
+        "centroid_x",
+        "centroid_y",
+        "representative_queries",
+        "sample_queries"
+      ],
+      "title": "ClusterReport",
+      "type": "object"
+    },
+    "DocumentRec": {
+      "properties": {
+        "kind": {
+          "enum": [
+            "kb_internal",
+            "external"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "cluster_id": {
+          "title": "Cluster Id",
+          "type": "integer"
+        },
+        "rank": {
+          "description": "1 = best recommendation for this cluster",
+          "title": "Rank",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "external recommendations",
+          "title": "Url"
+        },
+        "doc_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "kb_internal recommendations: the KB document holding the passage",
+          "title": "Doc Id"
+        },
+        "chunk_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chunk Id"
+        },
+        "snippet": {
+          "description": "the passage (kb_internal) or search snippet (external)",
+          "title": "Snippet",
+          "type": "string"
+        },
+        "action": {
+          "description": "what to do with it, in plain words",
+          "title": "Action",
+          "type": "string"
+        },
+        "similarity": {
+          "description": "cosine similarity of the snippet to the cluster's query centroid",
+          "title": "Similarity",
+          "type": "number"
+        },
+        "expected_gain": {
+          "description": "simulated change in the cluster's mean coverage score if the retriever returned this text for every probe in the cluster",
+          "title": "Expected Gain",
+          "type": "number"
+        },
+        "search_query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Search Query"
+        },
+        "retrieval_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "kb_internal: share of the cluster's probes whose retrieved context included this passage",
+          "title": "Retrieval Rate"
+        },
+        "answered_probes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "kb_internal: how many of the cluster's probes the cross-encoder says this passage answers",
+          "title": "Answered Probes"
+        }
+      },
+      "required": [
+        "kind",
+        "cluster_id",
+        "rank",
+        "title",
+        "snippet",
+        "action",
+        "similarity",
+        "expected_gain"
+      ],
+      "title": "DocumentRec",
+      "type": "object"
+    },
+    "ImprovementEstimate": {
+      "properties": {
+        "overall_before": {
+          "title": "Overall Before",
+          "type": "number"
+        },
+        "overall_after": {
+          "title": "Overall After",
+          "type": "number"
+        },
+        "recommendations_applied": {
+          "title": "Recommendations Applied",
+          "type": "integer"
+        },
+        "clusters_affected": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Clusters Affected",
+          "type": "array"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "overall_before",
+        "overall_after",
+        "recommendations_applied",
+        "clusters_affected",
+        "method"
+      ],
+      "title": "ImprovementEstimate",
+      "type": "object"
+    },
+    "Thresholds": {
+      "properties": {
+        "dark_below": {
+          "title": "Dark Below",
+          "type": "number"
+        },
+        "adequate_above": {
+          "title": "Adequate Above",
+          "type": "number"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dark_below",
+        "adequate_above",
+        "source"
+      ],
+      "title": "Thresholds",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "report_id": {
+      "format": "uuid",
+      "title": "Report Id",
+      "type": "string"
+    },
+    "kb_fingerprint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Kb Fingerprint"
+    },
+    "probe_count": {
+      "title": "Probe Count",
+      "type": "integer"
+    },
+    "cluster_count": {
+      "description": "clusters excluding the noise bucket",
+      "title": "Cluster Count",
+      "type": "integer"
+    },
+    "overall_coverage_score": {
+      "title": "Overall Coverage Score",
+      "type": "number"
+    },
+    "dark_zones": {
+      "description": "zone DARK, severity descending",
+      "items": {
+        "$ref": "#/$defs/ClusterReport"
+      },
+      "title": "Dark Zones",
+      "type": "array"
+    },
+    "thin_zones": {
+      "description": "zone THIN, severity descending",
+      "items": {
+        "$ref": "#/$defs/ClusterReport"
+      },
+      "title": "Thin Zones",
+      "type": "array"
+    },
+    "clusters": {
+      "description": "every cluster including ADEQUATE and noise, severity descending",
+      "items": {
+        "$ref": "#/$defs/ClusterReport"
+      },
+      "title": "Clusters",
+      "type": "array"
+    },
+    "recommendations": {
+      "description": "all recommendations, highest-severity gap first",
+      "items": {
+        "$ref": "#/$defs/DocumentRec"
+      },
+      "title": "Recommendations",
+      "type": "array"
+    },
+    "coverage_map_uri": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Coverage Map Uri"
+    },
+    "estimated_improvement": {
+      "description": "predicted overall_coverage_score after the top-3 recommendations (simulated, see detail)",
+      "title": "Estimated Improvement",
+      "type": "number"
+    },
+    "estimated_improvement_detail": {
+      "$ref": "#/$defs/ImprovementEstimate"
+    },
+    "thresholds": {
+      "$ref": "#/$defs/Thresholds"
+    },
+    "severity_size_cap": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Severity Size Cap"
+    },
+    "strategy_breakdown": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "type": "object"
+      },
+      "description": "strategy -> zone -> probe count",
+      "title": "Strategy Breakdown",
+      "type": "object"
+    },
+    "config": {
+      "additionalProperties": true,
+      "default": {},
+      "title": "Config",
+      "type": "object"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "report_id",
+    "kb_fingerprint",
+    "probe_count",
+    "cluster_count",
+    "overall_coverage_score",
+    "dark_zones",
+    "thin_zones",
+    "clusters",
+    "recommendations",
+    "estimated_improvement",
+    "estimated_improvement_detail",
+    "thresholds",
+    "severity_size_cap",
+    "strategy_breakdown",
+    "generated_at"
+  ],
+  "title": "GapReport",
+  "type": "object"
+}
