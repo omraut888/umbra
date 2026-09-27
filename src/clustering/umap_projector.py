@@ -17,7 +17,7 @@ import numpy as np
 RANDOM_STATE = 42
 
 
-def _umap(n_components: int, n_points: int, **kwargs):
+def _umap(n_components: int, n_points: int, random_state: int = RANDOM_STATE, **kwargs):
     import umap
 
     return umap.UMAP(
@@ -26,15 +26,15 @@ def _umap(n_components: int, n_points: int, **kwargs):
         n_neighbors=min(15, n_points - 1),
         metric="cosine",
         init="spectral",
-        random_state=RANDOM_STATE,
+        random_state=random_state,
         **kwargs,
     )
 
 
-def project_for_clustering(query_embeddings: np.ndarray) -> np.ndarray:
+def project_for_clustering(query_embeddings: np.ndarray, random_state: int = RANDOM_STATE) -> np.ndarray:
     # min_dist=0 packs neighbors tightly, which is what a density clusterer
     # wants; it would make an unreadable scatter plot, which is fine here.
-    reducer = _umap(10, len(query_embeddings), min_dist=0.0)
+    reducer = _umap(10, len(query_embeddings), random_state=random_state, min_dist=0.0)
     return reducer.fit_transform(query_embeddings)
 
 
