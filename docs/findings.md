@@ -188,6 +188,63 @@ The better fix is probably to calibrate the thresholds per embedding model
 I'd do that against the gap-injection benchmark in the spec's section 10 rather
 than tuning them on this one KB.
 
+## 3. None of the KB-derived probe strategies can find a topic the KB never mentions
+
+The Phase 2 audit ran all three generation strategies (1000 probes: taxonomy,
+HyDE adversarial, counterfactual) together with the 237 KB-blind probes, then
+clustered everything (1218 probes after dedup, 26 clusters plus noise).
+
+The clustering does what it should with the absent topics. Crypto taxes and
+orbital mechanics each form their own cluster, 100% pure (40/40 and 39/39),
+both DARK (mean CS 0.231 and 0.251), and they rank first and second by
+severity. The thin topics also get their own clusters: hydroponics (28 of 40
+probes, THIN, 0.311) and mushroom growing (31 of 38, THIN, 0.335). Those two
+are the next most severe clusters after the noise bucket.
+
+Here's where each strategy's probes landed:
+
+| strategy | probes | in DARK clusters | in THIN | in ADEQUATE | mean CS |
+|---|---|---|---|---|---|
+| taxonomy | 445 | 0% | 89% | 11% | 0.611 |
+| counterfactual | 207 | 0% | 93% | 7% | 0.525 |
+| adversarial (HyDE) | 331 | 0% | 99% | 1% | 0.439 |
+| KB-blind (stand-in for real user queries) | 235 | 34% | 64% | 3% | 0.373 |
+
+Every probe in the two dark clusters came from the KB-blind set. That isn't a
+tuning problem; it follows from how the strategies work. Taxonomy probes are
+generated from the KB's own topics. Counterfactual probes are near-misses
+around real KB chunks. Adversarial probes ask for topics *adjacent* to the KB.
+Asked for boundary topics of a gardening KB, Haiku came back with 108 of them:
+micronutrient deficiencies, rainwater harvesting, herbicide persistence,
+damping-off. Useful gaps, all of them gardening. None of the strategies will
+ever ask a gardening KB about crypto taxes.
+
+The thin topics are nearly as invisible. Of the 67 probes in the hydroponics
+and mushroom clusters, only 8 came from generated strategies (3 adversarial,
+5 counterfactual), all in the mushroom cluster. BERTopic folds the two buried
+passages into their host topics (seed starting, mulch), so taxonomy never
+targets them.
+
+What this means for the spec's strategy table: it credits taxonomy-guided
+generation with finding "absolute gaps: topics with zero coverage", and on
+this data it can't. In practice, absolute gaps in the out-of-domain sense only
+show up from outside the KB: real query logs (the spec's user-pattern
+strategy, which needs production traffic) or some other source of questions
+that doesn't start from the documents. The generated strategies are good at
+something else. Adversarial probes average 0.439, clearly below taxonomy's
+0.611, and they surface boundary gaps inside the domain. That's worth keeping
+in mind for the per-strategy ablation.
+
+Two smaller things from the same run:
+
+- Clusters from the full-coverage topics sit at 0.58–0.68, mostly just under
+  the 0.60 adequate line. That's the ceiling effect from finding 2. By
+  severity the tiers still come out in the right order: absent (2.74, 2.62),
+  then thin (2.28, 2.25), then everything built on the full topics (1.10–1.80).
+- The adversarial topic parser accepted markdown headings ("# Boundary Topics")
+  as topic names, which accounted for 9 of the 1218 probes. Fixed after this
+  run.
+
 ### Reproducing
 
 ```
@@ -204,7 +261,15 @@ done
 python scripts/validate_phase1.py report \
     --labeled dispersion=out/labeled_dispersion.csv --labeled spec=out/labeled_spec.csv \
     --taxonomy out/audit_dispersion.csv
+
+# finding 3
+umbra audit --endpoint http://localhost:8765/query --kb-path data/synthetic_kb --n-probes 1000 \
+    --probes-file data/validation/validation_probes.jsonl --output out/phase2.csv
+python scripts/validate_phase2.py out/phase2.csv
 ```
+
+Probe generation goes through an LLM, so reruns won't reproduce these numbers
+exactly. The KB-blind probe set is checked in so that part stays fixed.
 
 The 20-case table comes straight from `pytest tests/test_scoring.py`. The spec
 formula's five misses are pinned as strict xfails, so the comparison can't
