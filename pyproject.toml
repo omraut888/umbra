@@ -20,4 +20,5 @@ asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning"]
 markers = [
     "postgres: requires a Postgres+pgvector database (POSTGRES_DSN)",
+    "qdrant: requires a Qdrant server (QDRANT_URL)",
 ]
