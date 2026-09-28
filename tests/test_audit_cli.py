@@ -6,6 +6,7 @@ import os
 import socket
 import threading
 import time
+from pathlib import Path
 from collections import Counter
 
 import pytest
@@ -16,6 +17,8 @@ from src.cli import cli, load_probes_file, sample_probes
 from src.connectors.mock_rag_server import create_app
 from src.data import synthetic_kb_builder
 from src.probe_generation.taxonomy import Probe
+
+VALIDATION_PROBES = Path(__file__).resolve().parents[1] / "data/validation/validation_probes.jsonl"
 
 
 @pytest.fixture(scope="module")
@@ -242,3 +245,18 @@ def test_probes_file_only_run_is_deduplicated(server_url, kb_path, tmp_path):
     out = tmp_path / "d.csv"
     result = run_audit(server_url, kb_path, path, out, "--no-db")
     assert "2 probes after dedup" in result.output and len(read_rows(out)) == 2
+
+
+def test_clustered_audit_without_llm_into_a_new_directory(server_url, kb_path, tmp_path):
+    out = tmp_path / "nested" / "run" / "audit.csv"
+    result = CliRunner().invoke(cli, [
+        "audit", "--endpoint", server_url, "--kb-path", str(kb_path), "--strategies", "none",
+        "--probes-file", str(VALIDATION_PROBES), "--no-name-clusters", "--min-cluster-size", "5",
+        "--no-db", "--output", str(out),
+    ], env={"ANTHROPIC_API_KEY": ""}, catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    clusters = read_rows(out.with_suffix(".clusters.csv"))
+    assert len(clusters) >= 3
+    named = [c for c in clusters if c["cluster_id"] != "-1"]
+    assert named and all(c["name"].startswith(f"cluster {c['cluster_id']}: ") for c in named)
+    assert out.with_suffix(".responses.jsonl").exists()

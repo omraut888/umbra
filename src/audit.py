@@ -159,7 +159,9 @@ def cluster_outcomes(
 
 
 def write_cluster_csv(clusters: Sequence[ClusterCoverage], path: str | Path) -> None:
-    with Path(path).open("w", newline="", encoding="utf-8") as f:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CLUSTER_CSV_FIELDS)
         writer.writeheader()
         for c in clusters:
@@ -175,7 +177,9 @@ def write_cluster_csv(clusters: Sequence[ClusterCoverage], path: str | Path) -> 
 def write_responses(outcomes: Sequence[ProbeOutcome], path: str | Path) -> None:
     # retrieved chunk texts, which the report needs for KB-internal recommendations;
     # kept out of the CSV because five chunks per probe make it unreadable
-    with Path(path).open("w", encoding="utf-8") as f:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
         for o in outcomes:
             f.write(json.dumps({"probe_id": str(o.probe_id), "chunk_ids": o.response.chunk_ids,
                                 "chunk_texts": o.response.chunk_texts}) + "\n")
