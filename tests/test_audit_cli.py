@@ -6,14 +6,16 @@ import os
 import socket
 import threading
 import time
+from collections import Counter
 
 import pytest
 import uvicorn
 from click.testing import CliRunner
 
-from src.cli import cli
+from src.cli import cli, load_probes_file, sample_probes
 from src.connectors.mock_rag_server import create_app
 from src.data import synthetic_kb_builder
+from src.probe_generation.taxonomy import Probe
 
 
 @pytest.fixture(scope="module")
@@ -203,3 +205,40 @@ def test_index_qdrant_then_audit(kb_path, probes_file, tmp_path, server_url):
     assert [r["retrieved_chunk_ids"] for r in q_rows] == [r["retrieved_chunk_ids"] for r in h_rows]
     assert [float(r["coverage_score"]) for r in q_rows] == pytest.approx(
         [float(r["coverage_score"]) for r in h_rows], abs=1e-3)
+
+
+def _probes(counts):
+    return [Probe(query=f"{s} question {i}", strategy=s) for s, n in counts.items() for i in range(n)]
+
+
+def test_sample_probes_keeps_strategy_shares_and_is_repeatable():
+    probes = _probes({"taxonomy": 600, "adversarial": 250, "counterfactual": 150})
+    a, b = sample_probes(probes, 500), sample_probes(probes, 500)
+    assert a == b and len(a) == 500 and sample_probes(probes, 500, seed=1) != a
+    assert Counter(p.strategy for p in a) == {"taxonomy": 300, "adversarial": 125, "counterfactual": 75}
+    # largest remainder: 7/3 each -> 2,2,2 plus one for the biggest fraction
+    uneven = sample_probes(_probes({"a": 40, "b": 33, "c": 27}), 7)
+    assert Counter(p.strategy for p in uneven) == {"a": 3, "b": 2, "c": 2}
+    assert [probes.index(p) for p in a] == sorted(probes.index(p) for p in a)  # original order kept
+    assert sample_probes(probes[:10], 50) == probes[:10]
+
+
+def test_mini_audit_reruns_a_previous_audit_csv(server_url, kb_path, probes_file, tmp_path):
+    first = tmp_path / "full.csv"
+    run_audit(server_url, kb_path, probes_file, first, "--no-db")
+    assert [p.query for p in load_probes_file(first)] == [r["query"] for r in read_rows(first)]
+    mini = tmp_path / "mini.csv"
+    result = run_audit(server_url, kb_path, first, mini, "--no-db", "--sample", "2")
+    assert "Mini-audit: sampled 2 probes" in result.output
+    rows = read_rows(mini)
+    assert len(rows) == 2 and {r["query"] for r in rows} <= {r["query"] for r in read_rows(first)}
+    assert all(r["generation_strategy"] == "provided" for r in rows)
+
+
+def test_probes_file_only_run_is_deduplicated(server_url, kb_path, tmp_path):
+    path = tmp_path / "dups.txt"
+    path.write_text("How often should I turn a compost pile?\nHow often should I turn a compost pile ?\n"
+                    "What is a Hohmann transfer orbit?\n")
+    out = tmp_path / "d.csv"
+    result = run_audit(server_url, kb_path, path, out, "--no-db")
+    assert "2 probes after dedup" in result.output and len(read_rows(out)) == 2

@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import random
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -32,7 +33,14 @@ def _parse_band(value: str) -> Tuple[float, float]:
 
 
 def load_probes_file(path: Path) -> List[Probe]:
-    """.jsonl: {"query", "topic"?, "strategy"?} per line. Anything else: one query per line."""
+    """.jsonl: {"query", "topic"?, "strategy"?} per line. .csv: a previous `umbra audit`
+    output, so a probe set generated once can be re-run. Anything else: one query per line."""
+    if path.suffix == ".csv":
+        import csv
+
+        with path.open(newline="", encoding="utf-8") as f:
+            return [Probe(query=r["query"], topic=r.get("probe_topic") or None,
+                          strategy=r.get("generation_strategy") or "provided") for r in csv.DictReader(f)]
     probes = []
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
@@ -43,6 +51,23 @@ def load_probes_file(path: Path) -> List[Probe]:
         else:
             probes.append(Probe(query=line.strip(), strategy="provided"))
     return probes
+
+
+def sample_probes(probes: List[Probe], n: int, seed: int = 0) -> List[Probe]:
+    """n probes, keeping each strategy's share. Same input + seed gives the same
+    sample, so nightly mini-audits stay comparable run to run."""
+    if n >= len(probes):
+        return list(probes)
+    rng = random.Random(seed)
+    by_strategy = defaultdict(list)
+    for i, p in enumerate(probes):
+        by_strategy[p.strategy].append(i)
+    quotas = {s: n * len(ix) / len(probes) for s, ix in by_strategy.items()}
+    alloc = {s: int(q) for s, q in quotas.items()}
+    for s in sorted(quotas, key=lambda s: quotas[s] - alloc[s], reverse=True)[: n - sum(alloc.values())]:
+        alloc[s] += 1
+    picked = sorted(i for s, ix in by_strategy.items() for i in rng.sample(ix, alloc[s]))
+    return [probes[i] for i in picked]
 
 
 @click.group()
@@ -123,6 +148,11 @@ def _make_connector(connector, endpoint, auth_header, extra_payload, qdrant_url,
               help="dispersion = mean pairwise cosine distance; spec = the original spec §4 histogram entropy.")
 @click.option("--cluster/--no-cluster", default=True, show_default=True, help="UMAP + HDBSCAN + zone summary.")
 @click.option("--min-cluster-size", default=DEFAULT_MIN_CLUSTER_SIZE, show_default=True)
+@click.option("--name-clusters/--no-name-clusters", "name_clusters_", default=True, show_default=True,
+              help="Name clusters with Claude; without it they're labeled by a representative query.")
+@click.option("--sample", type=click.IntRange(min=1),
+              help="Run a fixed, strategy-stratified sample of this many probes (mini-audit, e.g. 500).")
+@click.option("--sample-seed", default=0, show_default=True)
 @click.option("--zone-thresholds", default=f"{DEFAULT_THRESHOLDS.dark_below},{DEFAULT_THRESHOLDS.adequate_above}",
               show_default=True, help="dark_below,adequate_above for cluster zones.")
 @click.option("--zone-thresholds-file", type=click.Path(exists=True, dir_okay=False, path_type=Path),
@@ -135,8 +165,9 @@ def _make_connector(connector, endpoint, auth_header, extra_payload, qdrant_url,
 @click.option("--db-dsn", envvar="POSTGRES_DSN", help="Postgres DSN; results are stored when set. [env: POSTGRES_DSN]")
 @click.option("--no-db", is_flag=True, help="Skip Postgres even if POSTGRES_DSN is set.")
 def audit(connector, endpoint, qdrant_url, qdrant_api_key, collection, top_k, llm_endpoint, chain, kb_path, n_probes,
-          output, strategies, topics_file, domain, kb_blind_per_topic, probes_file, weights, hp_band, se_method, cluster, min_cluster_size, zone_thresholds, zone_thresholds_file, payload,
-          auth_header, concurrency, model, db_dsn, no_db) -> None:
+          output, strategies, topics_file, domain, kb_blind_per_topic, probes_file, weights, hp_band, se_method,
+          cluster, min_cluster_size, name_clusters_, sample, sample_seed, zone_thresholds, zone_thresholds_file,
+          payload, auth_header, concurrency, model, db_dsn, no_db) -> None:
     """Probe a RAG system, score coverage per probe, and cluster the results into zones."""
     from src.audit import (
         cluster_outcomes, overall_score, persist, run_probes, write_cluster_csv, write_csv, write_responses,
@@ -177,7 +208,7 @@ def audit(connector, endpoint, qdrant_url, qdrant_api_key, collection, top_k, ll
         extra_config["probes_file"] = str(probes_file)
         click.echo(f"Loaded {len(extra_probes)} probes from {probes_file}")
 
-    complete = anthropic_completer(model=model) if (chosen or cluster) else None
+    complete = anthropic_completer(model=model) if (chosen or (cluster and name_clusters_)) else None
     blind_topics = []
     if "kb_blind" in chosen:
         blind_topics = load_topics_file(topics_file) if topics_file else asyncio.run(enumerate_domain_topics(domain, complete))
@@ -198,8 +229,14 @@ def audit(connector, endpoint, qdrant_url, qdrant_api_key, collection, top_k, ll
             extra_config["n_topics"] = len(topics)
         extra_config["model"] = model
     else:
-        probes = extra_probes
+        from src.probe_generation.taxonomy import dedup_probes
+
+        probes = dedup_probes(extra_probes)
     click.echo(f"{len(probes)} probes after dedup: {dict(Counter(p.strategy for p in probes))}")
+    if sample and sample < len(probes):
+        probes = sample_probes(probes, sample, sample_seed)
+        extra_config.update(sample=sample, sample_seed=sample_seed)
+        click.echo(f"Mini-audit: sampled {len(probes)} probes: {dict(Counter(p.strategy for p in probes))}")
 
     async def _run():
         async with conn:

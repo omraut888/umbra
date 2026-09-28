@@ -25,6 +25,10 @@ async def name_clusters(clusters: Sequence[ClusterCoverage], complete, concurren
         if c.is_noise:
             c.name = NOISE_NAME
             return
+        if complete is None:  # no LLM: label by the most central query, still readable in the dashboard
+            reps = c.representative_queries
+            c.name = _clean(f"cluster {c.cluster_id}: {reps[0]}" if reps else f"cluster {c.cluster_id}")
+            return
         async with sem:
             text = await complete(NAMING_PROMPT.format(queries="\n".join(f"- {q}" for q in c.representative_queries)))
         c.name = _clean(text) or f"cluster {c.cluster_id}"

@@ -135,6 +135,15 @@ async def test_name_clusters_uses_representatives_and_skips_noise():
     assert len(prompts) == 1 and "- a?" in prompts[0] and "c?" not in prompts[0]
 
 
+async def test_name_clusters_without_llm_uses_central_query():
+    labels = np.array([0, 0, NOISE])
+    clusters = compute_cluster_coverage(labels, [0.2, 0.3, 0.9], np.eye(3), np.zeros((3, 2)), ["a?", "b" * 200, "c?"])
+    await name_clusters(clusters, None)
+    names = {c.cluster_id: c.name for c in clusters}
+    assert names[NOISE] == NOISE_NAME
+    assert names[0].startswith("cluster 0: ") and len(names[0]) <= 100
+
+
 def test_cluster_outcomes_on_real_probe_embeddings():
     rows = [json.loads(line) for line in VALIDATION_PROBES.read_text().splitlines()]
     tier_score = {"composting": 0.65, "tomato_growing": 0.65, "hydroponics": 0.35,
