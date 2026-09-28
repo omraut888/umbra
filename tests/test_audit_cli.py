@@ -138,3 +138,68 @@ def test_nothing_to_run_is_rejected(server_url, kb_path, tmp_path):
         "--output", str(tmp_path / "r.csv"), "--no-db",
     ])
     assert result.exit_code != 0 and "nothing to run" in result.output
+
+
+def test_connector_options_are_checked_before_anything_runs(kb_path, probes_file, tmp_path):
+    base = ["audit", "--kb-path", str(kb_path), "--probes-file", str(probes_file), "--strategies", "none",
+            "--no-cluster", "--no-db", "--output", str(tmp_path / "x.csv")]
+    for extra, msg in [([], "--endpoint"), (["--connector", "qdrant"], "--qdrant-url"),
+                       (["--connector", "langchain"], "--chain")]:
+        result = CliRunner().invoke(cli, base + extra, env={"QDRANT_URL": ""})
+        assert result.exit_code == 2 and msg in result.output
+
+
+def test_audit_through_langchain_chain(kb_path, probes_file, tmp_path, monkeypatch):
+    (tmp_path / "my_chain.py").write_text(f'''
+from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
+from langchain_core.vectorstores import InMemoryVectorStore
+from src.data.kb_loader import load_chunks
+from src.embeddings import embed
+
+
+class MiniLM(Embeddings):
+    def embed_documents(self, texts):
+        return embed(texts).tolist()
+
+    def embed_query(self, text):
+        return embed([text])[0].tolist()
+
+
+def make_retriever():
+    store = InMemoryVectorStore(MiniLM())
+    store.add_documents([Document(page_content=c.text, id=c.chunk_id, metadata={{"doc_id": c.doc_id}})
+                         for c in load_chunks({str(kb_path)!r})])
+    return store.as_retriever(search_kwargs={{"k": 5}})
+''')
+    monkeypatch.syspath_prepend(str(tmp_path))
+    out = tmp_path / "lc.csv"
+    result = CliRunner().invoke(cli, [
+        "audit", "--connector", "langchain", "--chain", "my_chain:make_retriever", "--kb-path", str(kb_path),
+        "--probes-file", str(probes_file), "--strategies", "none", "--no-cluster", "--no-db", "--output", str(out),
+    ], catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    rows = read_rows(out)
+    assert len(rows) == 4 and all(r["error"] == "" and r["n_chunks"] == "5" for r in rows)
+
+
+@pytest.mark.qdrant
+@pytest.mark.skipif(not os.environ.get("QDRANT_URL"), reason="QDRANT_URL not set")
+def test_index_qdrant_then_audit(kb_path, probes_file, tmp_path, server_url):
+    collection = "umbra_cli_test"
+    runner = CliRunner()
+    result = runner.invoke(cli, ["index-qdrant", "--kb-path", str(kb_path), "--collection", collection, "--recreate"],
+                           catch_exceptions=False)
+    assert result.exit_code == 0 and "Indexed" in result.output
+    q_out, h_out = tmp_path / "q.csv", tmp_path / "h.csv"
+    run_audit(server_url, kb_path, probes_file, h_out, "--no-db")
+    result = runner.invoke(cli, [
+        "audit", "--connector", "qdrant", "--collection", collection, "--kb-path", str(kb_path),
+        "--probes-file", str(probes_file), "--strategies", "none", "--no-cluster", "--no-db", "--output", str(q_out),
+    ], catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    # same chunks, same embedder: the Qdrant path should score exactly like the HTTP mock server
+    q_rows, h_rows = read_rows(q_out), read_rows(h_out)
+    assert [r["retrieved_chunk_ids"] for r in q_rows] == [r["retrieved_chunk_ids"] for r in h_rows]
+    assert [float(r["coverage_score"]) for r in q_rows] == pytest.approx(
+        [float(r["coverage_score"]) for r in h_rows], abs=1e-3)

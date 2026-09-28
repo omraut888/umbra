@@ -1,6 +1,7 @@
 """Umbra command-line interface.
 
     umbra audit --endpoint URL --kb-path PATH --n-probes 1000 --output report.csv
+    umbra audit --connector qdrant --qdrant-url URL --collection NAME --kb-path PATH ...
 """
 
 from __future__ import annotations
@@ -57,8 +58,50 @@ def cli(verbose: bool) -> None:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
+def _load_object(spec: str):
+    import importlib
+
+    module, _, attr = spec.partition(":")
+    if not attr:
+        raise click.BadParameter(f"expected module:attribute, got {spec!r}")
+    obj = getattr(importlib.import_module(module), attr)
+    return obj() if callable(obj) and not hasattr(obj, "ainvoke") else obj
+
+
+def _make_connector(connector, endpoint, auth_header, extra_payload, qdrant_url, qdrant_api_key, collection,
+                    top_k, llm_endpoint, chain):
+    """(connector, label stored as the audit's endpoint_url)."""
+    if connector == "http":
+        if not endpoint:
+            raise click.UsageError("--connector http needs --endpoint")
+        from src.connectors.http import HTTPRAGConnector
+
+        return HTTPRAGConnector(endpoint, auth_header=auth_header, extra_payload=extra_payload), endpoint
+    if connector == "qdrant":
+        if not qdrant_url:
+            raise click.UsageError("--connector qdrant needs --qdrant-url (or QDRANT_URL)")
+        from src.connectors.qdrant import QdrantRAGConnector
+
+        conn = QdrantRAGConnector(qdrant_url, collection, llm_endpoint, api_key=qdrant_api_key, top_k=top_k,
+                                  llm_auth_header=auth_header)
+        return conn, f"qdrant+{qdrant_url.rstrip('/')}/collections/{collection}"
+    if not chain:
+        raise click.UsageError("--connector langchain needs --chain module:attribute")
+    from src.connectors.langchain import LangChainRAGConnector
+
+    return LangChainRAGConnector(_load_object(chain)), f"langchain:{chain}"
+
+
 @cli.command()
-@click.option("--endpoint", required=True, help="RAG query endpoint URL (POST {\"query\": ...}).")
+@click.option("--connector", type=click.Choice(["http", "qdrant", "langchain"]), default="http", show_default=True,
+              help="How to reach the RAG system.")
+@click.option("--endpoint", help="http: RAG query endpoint URL (POST {\"query\": ...}).")
+@click.option("--qdrant-url", envvar="QDRANT_URL", help="qdrant: server URL. [env: QDRANT_URL]")
+@click.option("--qdrant-api-key", envvar="QDRANT_API_KEY", help="qdrant: API key. [env: QDRANT_API_KEY]")
+@click.option("--collection", default="umbra_kb", show_default=True, help="qdrant: collection to search.")
+@click.option("--top-k", default=5, show_default=True, help="qdrant: chunks retrieved per probe.")
+@click.option("--llm-endpoint", help="qdrant: optional generation endpoint (POST {\"question\", \"contexts\"}).")
+@click.option("--chain", help="langchain: module:attribute of a chain or retriever, or a function returning one.")
 @click.option("--kb-path", required=True, type=click.Path(exists=True, path_type=Path),
               help="Knowledge base directory (.md/.txt files), used for probe generation.")
 @click.option("--n-probes", default=1000, show_default=True, type=click.IntRange(min=0),
@@ -86,19 +129,19 @@ def cli(verbose: bool) -> None:
               help="Thresholds written by `umbra benchmark calibrate --write-thresholds`.")
 @click.option("--payload", default="{}", help="Extra JSON merged into each request body, e.g. '{\"top_k\": 5}'.")
 @click.option("--auth-header", envvar="RAG_AUTH_HEADER", help="Authorization header value for the endpoint.")
-@click.option("--concurrency", default=50, show_default=True, help="Concurrent RAG queries.")
+@click.option("--concurrency", default=50, show_default=True, type=click.IntRange(min=1),
+              help="Concurrent RAG queries.")
 @click.option("--model", default=CLAUDE_MODEL, show_default=True, help="Claude model for generation and naming.")
 @click.option("--db-dsn", envvar="POSTGRES_DSN", help="Postgres DSN; results are stored when set. [env: POSTGRES_DSN]")
 @click.option("--no-db", is_flag=True, help="Skip Postgres even if POSTGRES_DSN is set.")
-def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, kb_blind_per_topic, probes_file,
-          weights, hp_band, se_method, cluster, min_cluster_size, zone_thresholds, zone_thresholds_file, payload,
+def audit(connector, endpoint, qdrant_url, qdrant_api_key, collection, top_k, llm_endpoint, chain, kb_path, n_probes,
+          output, strategies, topics_file, domain, kb_blind_per_topic, probes_file, weights, hp_band, se_method, cluster, min_cluster_size, zone_thresholds, zone_thresholds_file, payload,
           auth_header, concurrency, model, db_dsn, no_db) -> None:
     """Probe a RAG system, score coverage per probe, and cluster the results into zones."""
     from src.audit import (
         cluster_outcomes, overall_score, persist, run_probes, write_cluster_csv, write_csv, write_responses,
     )
     from src.clustering.naming import name_clusters
-    from src.connectors.http import HTTPRAGConnector
     from src.data.kb_loader import kb_fingerprint, load_chunks, load_documents
     from src.probe_generation.kb_blind import enumerate_domain_topics, load_topics_file
     from src.probe_generation.strategies import generate_probe_set
@@ -118,6 +161,9 @@ def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, 
         raise click.UsageError("--n-probes must be > 0 when generating probes")
     if "kb_blind" in chosen and not (topics_file or domain):
         raise click.UsageError("kb_blind needs --topics-file or --domain")
+    # before probe generation, so a bad connector setup fails before any API spend
+    conn, endpoint = _make_connector(connector, endpoint, auth_header, extra_payload, qdrant_url, qdrant_api_key,
+                                     collection, top_k, llm_endpoint, chain)
 
     docs = load_documents(kb_path)
     fingerprint = kb_fingerprint(docs)
@@ -155,15 +201,13 @@ def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, 
         probes = extra_probes
     click.echo(f"{len(probes)} probes after dedup: {dict(Counter(p.strategy for p in probes))}")
 
-    conn = HTTPRAGConnector(endpoint, auth_header=auth_header, extra_payload=extra_payload)
-
     async def _run():
         async with conn:
             return await run_probes(probes, conn, CoverageScorer(config), concurrency=concurrency)
 
     click.echo(f"Querying {endpoint} and scoring...")
     outcomes = asyncio.run(_run())
-    if conn.n_rate_limited:
+    if getattr(conn, "n_rate_limited", 0):
         click.echo(f"Endpoint rate-limited {conn.n_rate_limited} requests (429); they were retried after Retry-After")
     scored = [o for o in outcomes if o.score]
     n_hp = sum(o.score.hp_computed for o in scored)
@@ -195,6 +239,31 @@ def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, 
         click.echo(f"Stored audit run {report_id} in Postgres")
     else:
         click.echo("Postgres storage skipped (set POSTGRES_DSN or --db-dsn to enable)")
+
+
+@cli.command("index-qdrant")
+@click.option("--kb-path", required=True, type=click.Path(exists=True, path_type=Path))
+@click.option("--qdrant-url", envvar="QDRANT_URL", required=True, help="[env: QDRANT_URL]")
+@click.option("--qdrant-api-key", envvar="QDRANT_API_KEY")
+@click.option("--collection", default="umbra_kb", show_default=True)
+@click.option("--recreate", is_flag=True, help="Drop the collection first.")
+def index_qdrant(kb_path, qdrant_url, qdrant_api_key, collection, recreate) -> None:
+    """Chunk and embed a KB into a Qdrant collection, for `umbra audit --connector qdrant`."""
+    from qdrant_client import AsyncQdrantClient
+
+    from src.connectors.qdrant import index_chunks
+    from src.data.kb_loader import load_chunks
+
+    chunks = load_chunks(kb_path)
+
+    async def _run():
+        client = AsyncQdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+        try:
+            return await index_chunks(client, collection, chunks, recreate=recreate)
+        finally:
+            await client.close()
+
+    click.echo(f"Indexed {asyncio.run(_run())} chunks into {collection} at {qdrant_url}")
 
 
 @cli.command()
