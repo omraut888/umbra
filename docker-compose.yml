@@ -1,0 +1,109 @@
+# docker compose up -d        postgres + qdrant + the mock RAG server, with
+#                             migrations applied and the synthetic KB indexed
+# docker compose run --rm umbra audit --endpoint http://mock-rag:8765/query ...
+#
+# Host ports match the local dev setup (Postgres on 5434); override with
+# UMBRA_PG_PORT / UMBRA_QDRANT_PORT / UMBRA_MOCK_PORT / UMBRA_DASH_PORT.
+
+# one image for every Umbra service; only `migrate` builds it (parallel builds of
+# the same tag collide), and the rest never try to pull it from a registry
+x-umbra: &umbra
+  image: umbra:local
+  pull_policy: never
+  environment:
+    POSTGRES_DSN: postgresql+psycopg2://umbra:umbra@postgres:5432/umbra
+    QDRANT_URL: http://qdrant:6333
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    RAG_AUTH_HEADER: ${RAG_AUTH_HEADER:-}
+  volumes:
+    - ./out:/app/out
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: umbra
+      POSTGRES_PASSWORD: umbra
+      POSTGRES_DB: umbra
+    ports:
+      - "${UMBRA_PG_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umbra -d umbra"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    ports:
+      - "${UMBRA_QDRANT_PORT:-6333}:6333"
+    volumes:
+      - qdrant:/qdrant/storage
+    healthcheck:
+      # the image has no curl or wget
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333'"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    <<: *umbra
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    pull_policy: build
+    entrypoint: ["alembic", "upgrade", "head"]
+    command: []
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  index-qdrant:
+    <<: *umbra
+    command: ["index-qdrant", "--kb-path", "data/synthetic_kb", "--collection", "umbra_kb"]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  mock-rag:
+    <<: *umbra
+    entrypoint: ["uvicorn", "src.connectors.mock_rag_server:app", "--host", "0.0.0.0", "--port", "8765"]
+    command: []
+    environment:
+      UMBRA_KB_PATH: data/synthetic_kb
+      UMBRA_MOCK_LATENCY: ${UMBRA_MOCK_LATENCY:-}
+      UMBRA_MOCK_RATE_LIMIT: ${UMBRA_MOCK_RATE_LIMIT:-}
+      UMBRA_MOCK_RATE_WINDOW: ${UMBRA_MOCK_RATE_WINDOW:-}
+    ports:
+      - "${UMBRA_MOCK_PORT:-8765}:8765"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health')"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+
+  # the CLI; `docker compose run --rm umbra <command>`
+  umbra:
+    <<: *umbra
+    profiles: ["cli"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mock-rag:
+        condition: service_healthy
+
+  # docker compose --profile dashboard up dashboard  (needs out/report.json from `umbra report`)
+  dashboard:
+    <<: *umbra
+    profiles: ["dashboard"]
+    command: ["dashboard", "--report", "out/report.json", "--port", "8050"]
+    environment:
+      HOST: 0.0.0.0
+    ports:
+      - "${UMBRA_DASH_PORT:-8050}:8050"
+
+volumes:
+  pgdata:
+  qdrant:

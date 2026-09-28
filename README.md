@@ -102,6 +102,38 @@ everything to Postgres if `POSTGRES_DSN` is set. Keeping report generation
 separate means an old audit can be re-reported under new thresholds, or with
 web search, without re-querying the RAG system.
 
+### Connecting to the RAG system
+
+Three connectors, all behind the same `query(question) -> chunks + answer`
+interface (`src/connectors/`):
+
+- `--connector http` (default): POSTs `{"query": ...}` to `--endpoint` and
+  reads the chunk list out of whatever keys the service uses (`chunks`,
+  `contexts`, `source_documents`, ...).
+- `--connector qdrant`: searches a Qdrant collection directly. The query
+  vector has to come from the same model the collection was built with, which
+  for `umbra index-qdrant` is Umbra's own MiniLM. Generation is optional
+  (`--llm-endpoint`), since the score only looks at what was retrieved.
+- `--connector langchain --chain module:attr`: any chain or retriever. It
+  handles the RetrievalQA output shape (`result`/`source_documents`), the
+  `create_retrieval_chain` shape (`answer`/`context`), and bare retrievers.
+
+Queries go out 50 at a time by default (`--concurrency`). A 429 pauses the
+whole pool until its Retry-After time, not just the request that got it;
+otherwise the other 49 workers keep hitting the limit. 429s get their own
+retry budget (20), separate from the one for 5xx and connection errors (4),
+because "come back later" isn't a failure. A probe that still fails is kept
+in the CSV with its error, and the rest of the audit carries on.
+
+For nightly monitoring, generate a probe set once and re-run a fixed sample
+of it. That makes no API calls, and the same seed gives the same 500 probes
+each night, so the scores are comparable from run to run:
+
+```
+umbra audit --endpoint ... --kb-path ... --strategies none \
+    --probes-file out/audit.csv --sample 500 --no-name-clusters --output out/nightly.csv
+```
+
 ## Why it's built this way
 
 **Three signals instead of one.** The score is
@@ -264,6 +296,11 @@ On the synthetic KB (details in [docs/findings.md](docs/findings.md)):
   would return the new text.
 - **HP band edges are hard cutoffs.** A probe at 0.649 gets the cross-encoder
   and one at 0.651 doesn't, so scores have a small discontinuity there.
+- **The Qdrant and LangChain connectors have only seen test setups.** They're
+  tested against a real Qdrant server and LangChain chains over the synthetic
+  KB, but not yet against a production collection like SENTINEL-X's. For a
+  collection built with another embedding model you have to pass that model's
+  `embed_fn`; there's no CLI flag for it yet.
 
 ## What I'd do next / differently
 
@@ -308,5 +345,24 @@ umbra benchmark ablate --out out/benchmark
 umbra report ... --zone-thresholds-file out/thresholds.json   # use the fit
 ```
 
-Tests: `pytest`. The Postgres tests run when `POSTGRES_DSN` is set and are
-skipped otherwise.
+Or the whole stack in Docker: Postgres+pgvector on 5434 (same as above),
+Qdrant on 6333, and the mock RAG server on 8765. Migrations run and the
+synthetic KB is indexed into Qdrant on the way up:
+
+```
+docker compose up -d --wait
+docker compose run --rm umbra audit --endpoint http://mock-rag:8765/query \
+    --kb-path data/synthetic_kb --strategies none \
+    --probes-file data/validation/validation_probes.jsonl --no-name-clusters --output out/audit.csv
+docker compose run --rm umbra audit --connector qdrant --kb-path data/synthetic_kb ...
+```
+
+Output lands in `./out`. Host ports can be moved with `UMBRA_PG_PORT`,
+`UMBRA_QDRANT_PORT` and `UMBRA_MOCK_PORT` if the local Postgres is already on
+5434. Setting `UMBRA_MOCK_RATE_LIMIT` (requests per `UMBRA_MOCK_RATE_WINDOW`
+seconds) and `UMBRA_MOCK_LATENCY` makes the mock server behave like a slow,
+rate-limited production endpoint.
+
+Tests: `pytest`. The Postgres tests run when `POSTGRES_DSN` is set, and the
+Qdrant server tests when `QDRANT_URL` is set; both are skipped otherwise. The
+other Qdrant tests use qdrant-client's in-process mode, so they always run.
