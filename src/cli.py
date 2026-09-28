@@ -155,12 +155,16 @@ def audit(endpoint, kb_path, n_probes, output, strategies, topics_file, domain, 
         probes = extra_probes
     click.echo(f"{len(probes)} probes after dedup: {dict(Counter(p.strategy for p in probes))}")
 
+    conn = HTTPRAGConnector(endpoint, auth_header=auth_header, extra_payload=extra_payload)
+
     async def _run():
-        async with HTTPRAGConnector(endpoint, auth_header=auth_header, extra_payload=extra_payload) as conn:
+        async with conn:
             return await run_probes(probes, conn, CoverageScorer(config), concurrency=concurrency)
 
     click.echo(f"Querying {endpoint} and scoring...")
     outcomes = asyncio.run(_run())
+    if conn.n_rate_limited:
+        click.echo(f"Endpoint rate-limited {conn.n_rate_limited} requests (429); they were retried after Retry-After")
     scored = [o for o in outcomes if o.score]
     n_hp = sum(o.score.hp_computed for o in scored)
     click.echo(f"Scored {len(scored)}/{len(outcomes)} probes; HP computed for {n_hp} (preliminary in {config.hp_band})")
