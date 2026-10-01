@@ -66,13 +66,18 @@ class QdrantRAGConnector(RAGConnector):
         answer = await self._generate(question, chunks) if self.llm else ""
         return RAGResponse(question=question, chunks=chunks, answer=answer)
 
-    async def query_many(self, questions: Sequence[str], concurrency: int = 50) -> List[RAGResponse]:
+    async def query_many(
+        self,
+        questions: Sequence[str],
+        concurrency: int = 50,
+        on_result: Optional[Callable[[RAGResponse], None]] = None,
+    ) -> List[RAGResponse]:
         # one batched encode instead of len(questions) calls fighting over the model lock
         unique = list(dict.fromkeys(questions))
         vectors = await asyncio.to_thread(self.embed_fn, unique)
         self._vectors.update(zip(unique, vectors))
         try:
-            return await super().query_many(questions, concurrency)
+            return await super().query_many(questions, concurrency, on_result)
         finally:
             self._vectors.clear()
 

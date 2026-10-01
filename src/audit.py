@@ -6,11 +6,12 @@ import asyncio
 import csv
 import json
 import logging
+import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from collections import Counter
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -25,7 +26,7 @@ from src.clustering.zones import (
     compute_cluster_coverage,
     label_purity,
 )
-from src.connectors.base import RAGConnector, RAGResponse
+from src.connectors.base import RAGConnector, RAGResponse, RetrievedChunk
 from src.probe_generation.taxonomy import Probe
 from src.scoring.composite import CoverageScore
 from src.scoring.scorer import CoverageScorer, ScorerConfig
@@ -87,13 +88,89 @@ def _fmt(x: Optional[float]) -> str:
     return "" if x is None else f"{x:.4f}"
 
 
+class QueryCheckpoint:
+    """Appends each successful response to a JSONL file the moment it arrives.
+
+    At 50k probes against a rate-limited endpoint the query phase can take
+    hours, and nothing else is written until it finishes. With resume=True the
+    responses already in the file are reused and only the rest are queried.
+    Failed queries aren't recorded, so a resumed run retries them.
+    """
+
+    def __init__(self, path: str | Path, resume: bool = False):
+        self.path = Path(path)
+        self.done: Dict[str, RAGResponse] = {}
+        if resume and self.path.exists():
+            self.done = _read_checkpoint(self.path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        # rewritten rather than appended to, so a line cut off by a kill mid-write is dropped
+        self._f = self.path.open("w", encoding="utf-8")
+        for resp in self.done.values():
+            self._write(resp)
+        self._f.flush()
+
+    def record(self, resp: RAGResponse) -> None:
+        if resp.error is None:
+            self._write(resp)
+            self._f.flush()
+
+    def _write(self, resp: RAGResponse) -> None:
+        self._f.write(json.dumps(asdict(resp), default=str) + "\n")
+
+    def close(self) -> None:
+        self._f.close()
+
+
+def _read_checkpoint(path: Path) -> Dict[str, RAGResponse]:
+    done = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            d = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        done[d["question"]] = RAGResponse(question=d["question"], chunks=[RetrievedChunk(**c) for c in d["chunks"]],
+                                          answer=d["answer"])
+    return done
+
+
+class _Progress:
+    def __init__(self, total: int, every: float = 0.1):
+        self.total, self.n, self.failed = total, 0, 0
+        self.step = max(1, int(total * every))
+        self.t0 = time.monotonic()
+
+    def __call__(self, resp: RAGResponse) -> None:
+        self.n += 1
+        self.failed += resp.error is not None
+        if self.n % self.step == 0 or self.n == self.total:
+            rate = self.n / max(time.monotonic() - self.t0, 1e-9)
+            log.info("queried %d/%d (%.1f/s, %d failed)", self.n, self.total, rate, self.failed)
+
+
 async def run_probes(
     probes: Sequence[Probe],
     connector: RAGConnector,
     scorer: CoverageScorer,
     concurrency: int = 50,
+    checkpoint: Optional[QueryCheckpoint] = None,
 ) -> List[ProbeOutcome]:
-    responses = await connector.query_many([p.query for p in probes], concurrency=concurrency)
+    queries = [p.query for p in probes]
+    cached = checkpoint.done if checkpoint else {}
+    todo = [i for i, q in enumerate(queries) if q not in cached]
+    if len(todo) < len(queries):
+        log.info("resuming: %d/%d probes already answered in %s", len(queries) - len(todo), len(queries),
+                 checkpoint.path)
+    progress = _Progress(len(todo))
+
+    def on_result(resp: RAGResponse) -> None:
+        if checkpoint:
+            checkpoint.record(resp)
+        progress(resp)
+
+    fresh = await connector.query_many([queries[i] for i in todo], concurrency=concurrency, on_result=on_result)
+    responses = [cached.get(q) for q in queries]
+    for i, resp in zip(todo, fresh):
+        responses[i] = resp
     ok = [i for i, r in enumerate(responses) if r.error is None]
     failed = len(probes) - len(ok)
     if failed:

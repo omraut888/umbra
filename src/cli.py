@@ -11,6 +11,7 @@ import json
 import logging
 import random
 from collections import Counter, defaultdict
+from dataclasses import asdict
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -164,13 +165,17 @@ def _make_connector(connector, endpoint, auth_header, extra_payload, qdrant_url,
 @click.option("--model", default=CLAUDE_MODEL, show_default=True, help="Claude model for generation and naming.")
 @click.option("--db-dsn", envvar="POSTGRES_DSN", help="Postgres DSN; results are stored when set. [env: POSTGRES_DSN]")
 @click.option("--no-db", is_flag=True, help="Skip Postgres even if POSTGRES_DSN is set.")
+@click.option("--resume", is_flag=True,
+              help="Pick up an interrupted audit with the same --output: reuse its probe set and the "
+                   "responses already received, and only query the rest.")
 def audit(connector, endpoint, qdrant_url, qdrant_api_key, collection, top_k, llm_endpoint, chain, kb_path, n_probes,
           output, strategies, topics_file, domain, kb_blind_per_topic, probes_file, weights, hp_band, se_method,
           cluster, min_cluster_size, name_clusters_, sample, sample_seed, zone_thresholds, zone_thresholds_file,
-          payload, auth_header, concurrency, model, db_dsn, no_db) -> None:
+          payload, auth_header, concurrency, model, db_dsn, no_db, resume) -> None:
     """Probe a RAG system, score coverage per probe, and cluster the results into zones."""
     from src.audit import (
-        cluster_outcomes, overall_score, persist, run_probes, write_cluster_csv, write_csv, write_responses,
+        QueryCheckpoint, cluster_outcomes, overall_score, persist, run_probes, write_cluster_csv, write_csv,
+        write_responses,
     )
     from src.clustering.naming import name_clusters
     from src.data.kb_loader import kb_fingerprint, load_chunks, load_documents
@@ -186,7 +191,7 @@ def audit(connector, endpoint, qdrant_url, qdrant_api_key, collection, top_k, ll
     except (ValueError, json.JSONDecodeError, KeyError) as exc:
         raise click.BadParameter(str(exc)) from exc
     chosen = [] if strategies.strip() == "none" else [s.strip() for s in strategies.split(",") if s.strip()]
-    if not chosen and not probes_file:
+    if not chosen and not probes_file and not resume:
         raise click.UsageError("nothing to run: pick --strategies or pass --probes-file")
     if set(chosen) - {"kb_blind"} and n_probes == 0:
         raise click.UsageError("--n-probes must be > 0 when generating probes")
@@ -200,47 +205,75 @@ def audit(connector, endpoint, qdrant_url, qdrant_api_key, collection, top_k, ll
     fingerprint = kb_fingerprint(docs)
     click.echo(f"KB: {len(docs)} documents, fingerprint {fingerprint[:12]}")
 
-    extra_config = {"strategies": chosen, "n_probes_requested": n_probes if chosen else 0,
-                    "zone_thresholds": [thresholds.dark_below, thresholds.adequate_above]}
-    extra_probes = []
-    if probes_file:
-        extra_probes = load_probes_file(probes_file)
-        extra_config["probes_file"] = str(probes_file)
-        click.echo(f"Loaded {len(extra_probes)} probes from {probes_file}")
-
-    complete = anthropic_completer(model=model) if (chosen or (cluster and name_clusters_)) else None
-    blind_topics = []
-    if "kb_blind" in chosen:
-        blind_topics = load_topics_file(topics_file) if topics_file else asyncio.run(enumerate_domain_topics(domain, complete))
-        click.echo(f"kb_blind: {len(blind_topics)} topics x {kb_blind_per_topic} probes"
-                   + ("" if topics_file else f" (expanded from --domain: {', '.join(t.name for t in blind_topics)})"))
-        extra_config.update(kb_blind_topics=[t.name for t in blind_topics], kb_blind_per_topic=kb_blind_per_topic)
-    if chosen:
-        chunks = load_chunks(kb_path)
-        click.echo(f"Generating probes with {model}: {', '.join(chosen)}")
-        probes, topics = asyncio.run(generate_probe_set(chunks, n_probes, chosen, complete, extra_probes,
-                                                        blind_topics, kb_blind_per_topic))
-        if topics:
-            for t in topics:
-                click.echo(f"  taxonomy topic {t.topic_id:>2} ({t.size:>3} chunks): {t.label}")
-            taxonomy_path = output.with_suffix(".taxonomy.json")
-            taxonomy_path.parent.mkdir(parents=True, exist_ok=True)
-            taxonomy_path.write_text(json.dumps([t.as_dict() for t in topics], indent=2) + "\n")
-            extra_config["n_topics"] = len(topics)
-        extra_config["model"] = model
+    # written before querying so --resume gets the same probes back without regenerating them
+    resume_path = output.with_suffix(".resume.json")
+    checkpoint_path = output.with_suffix(".checkpoint.jsonl")
+    resuming = resume and resume_path.exists()
+    if resuming:
+        state = json.loads(resume_path.read_text(encoding="utf-8"))
+        if state["kb_fingerprint"] != fingerprint or state["endpoint"] != endpoint:
+            raise click.UsageError(f"{resume_path} is from a different KB or endpoint; drop --resume to start over")
+        probes = [Probe(**p) for p in state["probes"]]
+        extra_config = state["extra_config"]
+        complete = anthropic_completer(model=model) if cluster and name_clusters_ else None
+        click.echo(f"Resuming: {len(probes)} probes from {resume_path}")
     else:
-        from src.probe_generation.taxonomy import dedup_probes
+        if resume:
+            if not chosen and not probes_file:
+                raise click.UsageError(f"nothing to resume at {resume_path}, and no --strategies or --probes-file")
+            click.echo(f"Nothing to resume at {resume_path}; starting a fresh audit")
+        elif checkpoint_path.exists():
+            click.echo(f"Overwriting unfinished audit state at {checkpoint_path} (use --resume to continue it)")
+        extra_config = {"strategies": chosen, "n_probes_requested": n_probes if chosen else 0,
+                        "zone_thresholds": [thresholds.dark_below, thresholds.adequate_above]}
+        extra_probes = []
+        if probes_file:
+            extra_probes = load_probes_file(probes_file)
+            extra_config["probes_file"] = str(probes_file)
+            click.echo(f"Loaded {len(extra_probes)} probes from {probes_file}")
 
-        probes = dedup_probes(extra_probes)
-    click.echo(f"{len(probes)} probes after dedup: {dict(Counter(p.strategy for p in probes))}")
-    if sample and sample < len(probes):
-        probes = sample_probes(probes, sample, sample_seed)
-        extra_config.update(sample=sample, sample_seed=sample_seed)
-        click.echo(f"Mini-audit: sampled {len(probes)} probes: {dict(Counter(p.strategy for p in probes))}")
+        complete = anthropic_completer(model=model) if (chosen or (cluster and name_clusters_)) else None
+        blind_topics = []
+        if "kb_blind" in chosen:
+            blind_topics = (load_topics_file(topics_file) if topics_file
+                            else asyncio.run(enumerate_domain_topics(domain, complete)))
+            click.echo(f"kb_blind: {len(blind_topics)} topics x {kb_blind_per_topic} probes"
+                       + ("" if topics_file else f" (expanded from --domain: {', '.join(t.name for t in blind_topics)})"))
+            extra_config.update(kb_blind_topics=[t.name for t in blind_topics], kb_blind_per_topic=kb_blind_per_topic)
+        if chosen:
+            chunks = load_chunks(kb_path)
+            click.echo(f"Generating probes with {model}: {', '.join(chosen)}")
+            probes, topics = asyncio.run(generate_probe_set(chunks, n_probes, chosen, complete, extra_probes,
+                                                            blind_topics, kb_blind_per_topic))
+            if topics:
+                for t in topics:
+                    click.echo(f"  taxonomy topic {t.topic_id:>2} ({t.size:>3} chunks): {t.label}")
+                taxonomy_path = output.with_suffix(".taxonomy.json")
+                taxonomy_path.parent.mkdir(parents=True, exist_ok=True)
+                taxonomy_path.write_text(json.dumps([t.as_dict() for t in topics], indent=2) + "\n")
+                extra_config["n_topics"] = len(topics)
+            extra_config["model"] = model
+        else:
+            from src.probe_generation.taxonomy import dedup_probes
+
+            probes = dedup_probes(extra_probes)
+        click.echo(f"{len(probes)} probes after dedup: {dict(Counter(p.strategy for p in probes))}")
+        if sample and sample < len(probes):
+            probes = sample_probes(probes, sample, sample_seed)
+            extra_config.update(sample=sample, sample_seed=sample_seed)
+            click.echo(f"Mini-audit: sampled {len(probes)} probes: {dict(Counter(p.strategy for p in probes))}")
+        resume_path.parent.mkdir(parents=True, exist_ok=True)
+        resume_path.write_text(json.dumps({"kb_fingerprint": fingerprint, "endpoint": endpoint,
+                                           "extra_config": extra_config, "probes": [asdict(p) for p in probes]}))
 
     async def _run():
-        async with conn:
-            return await run_probes(probes, conn, CoverageScorer(config), concurrency=concurrency)
+        checkpoint = QueryCheckpoint(checkpoint_path, resume=resuming)
+        try:
+            async with conn:
+                return await run_probes(probes, conn, CoverageScorer(config), concurrency=concurrency,
+                                        checkpoint=checkpoint)
+        finally:
+            checkpoint.close()
 
     click.echo(f"Querying {endpoint} and scoring...")
     outcomes = asyncio.run(_run())
@@ -265,6 +298,12 @@ def audit(connector, endpoint, qdrant_url, qdrant_api_key, collection, top_k, ll
     write_csv(outcomes, output)
     write_responses(outcomes, output.with_suffix(".responses.jsonl"))
     click.echo(f"Wrote {len(outcomes)} rows to {output}")
+    n_failed = sum(o.response.error is not None for o in outcomes)
+    if n_failed:
+        click.echo(f"{n_failed} probe queries failed; rerun with --resume to retry only those")
+    else:
+        resume_path.unlink(missing_ok=True)
+        checkpoint_path.unlink(missing_ok=True)
     overall = overall_score(outcomes)
     if overall is not None:
         click.echo(f"Overall coverage score: {overall:.3f}")

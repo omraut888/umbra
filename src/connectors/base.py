@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 # Keys RAG APIs commonly use for the chunk list and for chunk text. from_dict
 # accepts any of them so the HTTP connector works with most REST RAG services.
@@ -81,16 +81,26 @@ class RAGConnector(ABC):
     async def query(self, question: str) -> RAGResponse:
         """Submit a query and get retrieved chunks + generated answer."""
 
-    async def query_many(self, questions: Sequence[str], concurrency: int = 50) -> List[RAGResponse]:
+    async def query_many(
+        self,
+        questions: Sequence[str],
+        concurrency: int = 50,
+        on_result: Optional[Callable[[RAGResponse], None]] = None,
+    ) -> List[RAGResponse]:
+        """`on_result` is called with each response as soon as it arrives, in
+        completion order (the returned list is in input order)."""
         # one bad probe shouldn't kill a 1000-probe audit, so failures come back as RAGResponse(error=...)
         sem = asyncio.Semaphore(concurrency)
 
         async def one(q: str) -> RAGResponse:
             async with sem:
                 try:
-                    return await self.query(q)
+                    resp = await self.query(q)
                 except Exception as exc:  # noqa: BLE001 - recorded per probe
-                    return RAGResponse(question=q, chunks=[], error=f"{type(exc).__name__}: {exc}")
+                    resp = RAGResponse(question=q, chunks=[], error=f"{type(exc).__name__}: {exc}")
+            if on_result:
+                on_result(resp)
+            return resp
 
         return await asyncio.gather(*(one(q) for q in questions))
 

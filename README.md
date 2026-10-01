@@ -125,6 +125,14 @@ retry budget (20), separate from the one for 5xx and connection errors (4),
 because "come back later" isn't a failure. A probe that still fails is kept
 in the CSV with its error, and the rest of the audit carries on.
 
+Against a slow endpoint a big audit can spend hours in the query phase, so
+every response is appended to `audit.checkpoint.jsonl` as it arrives, and the
+probe set goes to `audit.resume.json` before the first query. If the run dies,
+the same command with `--resume` picks the probe set back up (no regeneration,
+so no API spend) and only queries what's missing. Failed queries aren't
+checkpointed, which makes `--resume` after a partly failed run a retry of just
+those. Both files are deleted once an audit finishes with no failures.
+
 For nightly monitoring, generate a probe set once and re-run a fixed sample
 of it. That makes no API calls, and the same seed gives the same 500 probes
 each night, so the scores are comparable from run to run:

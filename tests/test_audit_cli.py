@@ -9,11 +9,14 @@ import time
 from pathlib import Path
 from collections import Counter
 
+import httpx
 import pytest
 import uvicorn
 from click.testing import CliRunner
 
+from src.audit import QueryCheckpoint, run_probes
 from src.cli import cli, load_probes_file, sample_probes
+from src.connectors import HTTPRAGConnector, RAGConnector, RAGResponse, RetrievedChunk
 from src.connectors.mock_rag_server import create_app
 from src.data import synthetic_kb_builder
 from src.probe_generation.taxonomy import Probe
@@ -260,3 +263,113 @@ def test_clustered_audit_without_llm_into_a_new_directory(server_url, kb_path, t
     named = [c for c in clusters if c["cluster_id"] != "-1"]
     assert named and all(c["name"].startswith(f"cluster {c['cluster_id']}: ") for c in named)
     assert out.with_suffix(".responses.jsonl").exists()
+
+
+class _ListConnector(RAGConnector):
+    """Answers from a dict; queries listed in `fail` raise."""
+
+    def __init__(self, fail=()):
+        self.fail, self.asked = set(fail), []
+
+    async def query(self, question):
+        self.asked.append(question)
+        if question in self.fail:
+            raise RuntimeError("endpoint down")
+        return RAGResponse(question=question, chunks=[RetrievedChunk(text=f"about {question}", chunk_id="c1",
+                                                                     score=0.5, metadata={"doc_id": "d"})],
+                           answer="a")
+
+
+class _NullScorer:
+    def score_batch(self, queries, chunk_lists):
+        return [None] * len(queries), [None] * len(queries)
+
+
+async def test_checkpoint_resume_only_queries_what_is_missing(tmp_path):
+    probes = [Probe(query=f"q{i}") for i in range(6)]
+    path = tmp_path / "a.checkpoint.jsonl"
+
+    first = QueryCheckpoint(path)
+    await run_probes(probes, _ListConnector(fail={"q2", "q4"}), _NullScorer(), checkpoint=first)
+    first.close()
+    assert len(path.read_text().splitlines()) == 4  # failures aren't checkpointed
+
+    conn = _ListConnector()
+    second = QueryCheckpoint(path, resume=True)
+    outcomes = await run_probes(probes, conn, _NullScorer(), checkpoint=second)
+    second.close()
+    assert sorted(conn.asked) == ["q2", "q4"]
+    assert [o.response.question for o in outcomes] == [p.query for p in probes]
+    assert all(o.response.error is None and o.response.chunks[0].metadata == {"doc_id": "d"} for o in outcomes)
+    assert len(path.read_text().splitlines()) == 6
+
+
+def test_checkpoint_drops_a_line_cut_off_mid_write(tmp_path):
+    path = tmp_path / "a.checkpoint.jsonl"
+    cp = QueryCheckpoint(path)
+    cp.record(RAGResponse(question="q0", chunks=[RetrievedChunk(text="t")], answer="a"))
+    cp.close()
+    with path.open("a") as f:
+        f.write('{"question": "q1", "chunks": [{"te')
+
+    cp = QueryCheckpoint(path, resume=True)
+    assert list(cp.done) == ["q0"]
+    cp.record(RAGResponse(question="q2", chunks=[], answer=""))
+    cp.close()
+    assert [json.loads(line)["question"] for line in path.read_text().splitlines()] == ["q0", "q2"]
+
+
+def _served(server_url):
+    return httpx.get(server_url.replace("/query", "/health")).json()["traffic"]["served"]
+
+
+def test_interrupted_audit_resumes_without_requerying(server_url, kb_path, probes_file, tmp_path, monkeypatch):
+    out = tmp_path / "report.csv"
+    original = HTTPRAGConnector.query
+    calls = []
+
+    async def dies_on_third(self, question):
+        resp = await original(self, question)
+        calls.append(question)
+        if len(calls) == 3:
+            raise KeyboardInterrupt
+        return resp
+
+    monkeypatch.setattr(HTTPRAGConnector, "query", dies_on_third)
+    result = CliRunner().invoke(cli, [
+        "audit", "--endpoint", server_url, "--kb-path", str(kb_path), "--probes-file", str(probes_file),
+        "--strategies", "none", "--no-cluster", "--no-db", "--concurrency", "1", "--output", str(out),
+    ])
+    assert result.exit_code == 1 and "Aborted" in result.output  # how click reports Ctrl-C
+    assert not out.exists() and len(out.with_suffix(".checkpoint.jsonl").read_text().splitlines()) == 2
+    monkeypatch.setattr(HTTPRAGConnector, "query", original)
+
+    before = _served(server_url)
+    # no --probes-file: the probe set comes back from the resume state
+    result = CliRunner().invoke(cli, [
+        "audit", "--endpoint", server_url, "--kb-path", str(kb_path), "--strategies", "none", "--no-cluster",
+        "--no-db", "--resume", "--output", str(out),
+    ], catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    assert "Resuming: 4 probes" in result.output
+    assert _served(server_url) - before == 2
+    rows = read_rows(out)
+    assert len(rows) == 4 and all(r["error"] == "" and r["coverage_score"] for r in rows)
+    assert not out.with_suffix(".resume.json").exists() and not out.with_suffix(".checkpoint.jsonl").exists()
+
+
+def test_failed_queries_keep_resume_state(kb_path, probes_file, tmp_path):
+    out = tmp_path / "report.csv"
+    result = run_audit("http://127.0.0.1:9/query", kb_path, probes_file, out, "--no-db")
+    assert "4 probe queries failed; rerun with --resume" in result.output
+    assert out.with_suffix(".resume.json").exists()
+
+
+def test_resume_refuses_state_from_another_endpoint(server_url, kb_path, probes_file, tmp_path):
+    out = tmp_path / "report.csv"
+    run_audit("http://127.0.0.1:9/query", kb_path, probes_file, out, "--no-db")
+    result = CliRunner().invoke(cli, [
+        "audit", "--endpoint", server_url, "--kb-path", str(kb_path), "--strategies", "none", "--no-cluster",
+        "--no-db", "--resume", "--output", str(out),
+    ])
+    assert result.exit_code != 0 and "different KB or endpoint" in result.output
