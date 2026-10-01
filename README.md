@@ -122,7 +122,8 @@ Queries go out 50 at a time by default (`--concurrency`). A 429 pauses the
 whole pool until its Retry-After time, not just the request that got it;
 otherwise the other 49 workers keep hitting the limit. 429s get their own
 retry budget (20), separate from the one for 5xx and connection errors (4),
-because "come back later" isn't a failure. A probe that still fails is kept
+because "come back later" isn't a failure. The Qdrant connector
+does the same for Qdrant Cloud's 429s. A probe that still fails is kept
 in the CSV with its error, and the rest of the audit carries on.
 
 Against a slow endpoint a big audit can spend hours in the query phase, so

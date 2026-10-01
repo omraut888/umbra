@@ -15,6 +15,46 @@ from src.connectors.base import RAGConnector, RAGResponse
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504}
 
 
+def backoff(attempt: int, base: float) -> float:
+    return base * (2**attempt) * (1 + random.random() * 0.25)
+
+
+class RateLimitGate:
+    """The 429 state one rate-limited backend's workers share.
+
+    A 429 is about the client as a whole, not the one request that got it.
+    Every in-flight worker waits until the cooldown ends before sending,
+    otherwise 50 workers keep hitting the limit one after another.
+    """
+
+    def __init__(self, max_retry_after: float = 60.0):
+        self.max_retry_after = max_retry_after
+        self.n_rate_limited = 0
+        self._cooldown_until = 0.0  # time.monotonic()
+
+    def hit(self, delay: float) -> None:
+        self.n_rate_limited += 1
+        self._cooldown_until = max(self._cooldown_until, time.monotonic() + delay)
+
+    async def wait(self) -> None:
+        while (remaining := self._cooldown_until - time.monotonic()) > 0:
+            # jitter so the whole pool doesn't fire in the same instant the window reopens
+            await asyncio.sleep(remaining * (1 + random.random() * 0.1))
+
+    def retry_after(self, value: Any) -> Optional[float]:
+        """Seconds from a Retry-After value (delta-seconds or HTTP-date), capped."""
+        if value is None:
+            return None
+        try:
+            seconds = float(value)
+        except ValueError:
+            try:
+                seconds = parsedate_to_datetime(value).timestamp() - time.time()
+            except (TypeError, ValueError):
+                return None
+        return min(max(seconds, 0.0), self.max_retry_after)
+
+
 class RetryingClient:
     """httpx.AsyncClient.post with the retry policy every Umbra connector uses.
 
@@ -35,63 +75,39 @@ class RetryingClient:
     ):
         self.max_retries = max_retries
         self.max_rate_limit_retries = max_rate_limit_retries
-        self.max_retry_after = max_retry_after
         self.backoff_base = backoff_base
-        self.n_rate_limited = 0
-        # A 429 is about the client as a whole, not the one request that got it.
-        # Every in-flight worker waits until this monotonic time before sending,
-        # otherwise 50 workers keep hitting the limit one after another.
-        self._cooldown_until = 0.0
+        self.gate = RateLimitGate(max_retry_after)
         headers = {"Authorization": auth_header} if auth_header else {}
         self._client = httpx.AsyncClient(headers=headers, timeout=timeout, transport=transport)
+
+    @property
+    def n_rate_limited(self) -> int:
+        return self.gate.n_rate_limited
 
     async def post_json(self, url: str, payload: Dict[str, Any]) -> httpx.Response:
         errors = rate_limits = 0
         while True:
-            await self._wait_for_cooldown()
+            await self.gate.wait()
             try:
                 resp = await self._client.post(url, json=payload)
             except (httpx.TransportError, httpx.TimeoutException):
                 if errors >= self.max_retries:
                     raise
-                await asyncio.sleep(self._backoff(errors))
+                await asyncio.sleep(backoff(errors, self.backoff_base))
                 errors += 1
                 continue
             if resp.status_code == 429 and rate_limits < self.max_rate_limit_retries:
-                self.n_rate_limited += 1
-                delay = self._retry_after(resp)
-                if delay is None:
-                    delay = self._backoff(min(rate_limits, 6))
-                self._cooldown_until = max(self._cooldown_until, time.monotonic() + delay)
+                delay = self.gate.retry_after(resp.headers.get("retry-after"))
+                self.gate.hit(backoff(min(rate_limits, 6), self.backoff_base) if delay is None else delay)
                 rate_limits += 1
                 continue
             if resp.status_code in RETRY_STATUSES - {429} and errors < self.max_retries:
-                await asyncio.sleep(self._retry_after(resp) or self._backoff(errors))
+                delay = self.gate.retry_after(resp.headers.get("retry-after"))
+                await asyncio.sleep(backoff(errors, self.backoff_base) if delay is None else delay)
                 errors += 1
                 continue
             resp.raise_for_status()
             return resp
-
-    async def _wait_for_cooldown(self) -> None:
-        while (remaining := self._cooldown_until - time.monotonic()) > 0:
-            # jitter so the whole pool doesn't fire in the same instant the window reopens
-            await asyncio.sleep(remaining * (1 + random.random() * 0.1))
-
-    def _backoff(self, attempt: int) -> float:
-        return self.backoff_base * (2**attempt) * (1 + random.random() * 0.25)
-
-    def _retry_after(self, resp: httpx.Response) -> Optional[float]:
-        value = resp.headers.get("retry-after")
-        if value is None:
-            return None
-        try:
-            seconds = float(value)
-        except ValueError:
-            try:
-                seconds = parsedate_to_datetime(value).timestamp() - time.time()
-            except (TypeError, ValueError):
-                return None
-        return min(max(seconds, 0.0), self.max_retry_after)
 
     async def aclose(self) -> None:
         await self._client.aclose()

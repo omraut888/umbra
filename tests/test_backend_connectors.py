@@ -3,9 +3,11 @@ over the synthetic KB: an in-process Qdrant (and a server one when QDRANT_URL
 is set), and LangChain chains over an InMemoryVectorStore."""
 
 import os
+import time
 from operator import itemgetter
 
 import httpx
+import numpy as np
 import pytest
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -33,6 +35,10 @@ def chunks(tmp_path_factory):
     out = tmp_path_factory.mktemp("kb")
     synthetic_kb_builder.build(out)
     return out, load_chunks(out)
+
+
+def _fixed_embed(texts):
+    return np.ones((len(texts), 384), dtype=np.float32)
 
 
 async def _memory_qdrant(chunks, collection="kb"):
@@ -111,6 +117,41 @@ class TestQdrant:
                                       transport=httpx.MockTransport(llm)) as conn:
             resp = await conn.query(COMPOST_Q)
         assert resp.answer == "use 30:1" and len(seen) == 2 and conn.llm.n_rate_limited == 1
+
+    async def test_rate_limited_rest_client_waits_out_retry_after(self):
+        # a real REST AsyncQdrantClient; middleware stands in for Qdrant Cloud answering 429s
+        sent = []
+        t0 = time.monotonic()
+        point = {"id": 7, "version": 0, "score": 0.9, "payload": {"chunk_id": "c7", "doc_id": "d", "text": "hi"}}
+
+        async def cloud(request, call_next):
+            sent.append(time.monotonic() - t0)
+            if len(sent) == 1:
+                return httpx.Response(429, headers={"Retry-After": "1"}, json={"status": {"error": "slow down"}})
+            if len(sent) == 2:
+                return httpx.Response(429, json={"status": {"error": "slow down"}})  # no Retry-After
+            return httpx.Response(200, json={"result": {"points": [point]}, "status": "ok", "time": 0.0})
+
+        client = AsyncQdrantClient(url="http://qdrant.test:6333", check_compatibility=False)
+        client.http.client.add_middleware(cloud)
+        async with QdrantRAGConnector(client=client, collection="kb", embed_fn=_fixed_embed,
+                                      backoff_base=0.05) as conn:
+            [resp] = await conn.query_many(["q"])
+        assert resp.error is None and resp.chunk_ids == ["c7"] and resp.chunk_texts == ["hi"]
+        assert conn.n_rate_limited == 2 and len(sent) == 3
+        assert sent[1] >= 1.0  # honored Retry-After
+        assert sent[2] - sent[1] >= 0.05  # backoff when there wasn't one
+
+    async def test_rate_limit_exhaustion_is_a_per_probe_error(self):
+        async def always_limited(request, call_next):
+            return httpx.Response(429, headers={"Retry-After": "0"}, json={"status": {"error": "quota"}})
+
+        client = AsyncQdrantClient(url="http://qdrant.test:6333", check_compatibility=False)
+        client.http.client.add_middleware(always_limited)
+        async with QdrantRAGConnector(client=client, collection="kb", embed_fn=_fixed_embed,
+                                      max_rate_limit_retries=2) as conn:
+            [resp] = await conn.query_many(["q"])
+        assert "ResourceExhausted" in resp.error and conn.n_rate_limited == 2
 
     async def test_missing_collection_is_a_per_probe_error(self, chunks):
         async with QdrantRAGConnector(client=AsyncQdrantClient(location=":memory:"), collection="nope") as conn:

@@ -19,9 +19,11 @@ from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 from qdrant_client import AsyncQdrantClient, models
+from qdrant_client.common.client_exceptions import ResourceExhaustedResponse
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 from src.connectors.base import _ANSWER_KEYS, _CHUNK_TEXT_KEYS, RAGConnector, RAGResponse, RetrievedChunk
-from src.connectors.http import RetryingClient
+from src.connectors.http import RateLimitGate, RetryingClient, backoff
 from src.embeddings import embed
 
 EmbedFn = Callable[[Sequence[str]], np.ndarray]
@@ -41,6 +43,9 @@ class QdrantRAGConnector(RAGConnector):
         text_key: Optional[str] = None,
         embed_fn: EmbedFn = embed,
         llm_auth_header: Optional[str] = None,
+        max_rate_limit_retries: int = 20,
+        max_retry_after: float = 60.0,
+        backoff_base: float = 0.5,
         **llm_client_kwargs: Any,
     ):
         if client is None and qdrant_url is None:
@@ -52,16 +57,20 @@ class QdrantRAGConnector(RAGConnector):
         self.vector_name = vector_name
         self.text_key = text_key
         self.embed_fn = embed_fn
-        self.llm = RetryingClient(llm_auth_header, **llm_client_kwargs) if llm_endpoint else None
+        self.max_rate_limit_retries = max_rate_limit_retries
+        self.backoff_base = backoff_base
+        # Qdrant Cloud rate-limits too; same shared-cooldown handling as the HTTP connector
+        self.gate = RateLimitGate(max_retry_after)
+        self.llm = (RetryingClient(llm_auth_header, max_rate_limit_retries=max_rate_limit_retries,
+                                   max_retry_after=max_retry_after, backoff_base=backoff_base, **llm_client_kwargs)
+                    if llm_endpoint else None)
         self._vectors: Dict[str, np.ndarray] = {}
 
     async def query(self, question: str) -> RAGResponse:
         vector = self._vectors.pop(question, None)
         if vector is None:
             [vector] = await asyncio.to_thread(self.embed_fn, [question])
-        result = await self.client.query_points(
-            self.collection, query=vector.tolist(), using=self.vector_name, limit=self.top_k, with_payload=True,
-        )
+        result = await self._search(vector)
         chunks = [self._chunk(p, i) for i, p in enumerate(result.points)]
         answer = await self._generate(question, chunks) if self.llm else ""
         return RAGResponse(question=question, chunks=chunks, answer=answer)
@@ -80,6 +89,30 @@ class QdrantRAGConnector(RAGConnector):
             return await super().query_many(questions, concurrency, on_result)
         finally:
             self._vectors.clear()
+
+    @property
+    def n_rate_limited(self) -> int:
+        return self.gate.n_rate_limited + (self.llm.n_rate_limited if self.llm else 0)
+
+    async def _search(self, vector: np.ndarray) -> models.QueryResponse:
+        attempt = 0
+        while True:
+            await self.gate.wait()
+            try:
+                return await self.client.query_points(
+                    self.collection, query=vector.tolist(), using=self.vector_name, limit=self.top_k,
+                    with_payload=True,
+                )
+            except ResourceExhaustedResponse as exc:  # a 429 with Retry-After
+                if attempt >= self.max_rate_limit_retries:
+                    raise
+                delay = self.gate.retry_after(exc.retry_after_s)
+            except UnexpectedResponse as exc:  # qdrant_client raises this for a 429 without one
+                if exc.status_code != 429 or attempt >= self.max_rate_limit_retries:
+                    raise
+                delay = self.gate.retry_after(exc.headers.get("retry-after"))
+            self.gate.hit(backoff(min(attempt, 6), self.backoff_base) if delay is None else delay)
+            attempt += 1
 
     def _chunk(self, point: models.ScoredPoint, position: int) -> RetrievedChunk:
         payload = dict(point.payload or {})

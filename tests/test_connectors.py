@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 from src.connectors import HTTPRAGConnector, RAGResponse
-from src.connectors.http import RetryingClient
+from src.connectors.http import RateLimitGate
 from src.connectors.mock_rag_server import create_app
 from src.data import synthetic_kb_builder
 
@@ -220,5 +220,5 @@ async def test_rate_limit_budget_is_separate_and_exhaustion_is_recorded():
 def test_retry_after_parsing(header, expected):
     if isinstance(header, int):  # HTTP-date form, `header` seconds from now
         header = format_datetime(datetime.now(timezone.utc) + timedelta(seconds=header), usegmt=True)
-    got = RetryingClient()._retry_after(httpx.Response(429, headers={"Retry-After": header}))
+    got = RateLimitGate().retry_after(header)
     assert got is None if expected is None else got == pytest.approx(expected, abs=1.5)
