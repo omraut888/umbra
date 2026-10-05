@@ -1,0 +1,65 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: umbra
+          POSTGRES_PASSWORD: umbra
+          POSTGRES_DB: umbra
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U umbra -d umbra"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+      qdrant:
+        image: qdrant/qdrant:v1.19.0
+        ports:
+          - 6333:6333
+        # the image has no curl or wget
+        options: >-
+          --health-cmd "bash -c ':> /dev/tcp/127.0.0.1/6333'"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+
+    env:
+      POSTGRES_DSN: postgresql+psycopg2://umbra:umbra@localhost:5432/umbra
+      QDRANT_URL: http://localhost:6333
+      ANTHROPIC_API_KEY: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-minilm-v1
+
+      # CPU torch first, so sentence-transformers doesn't pull the multi-GB CUDA build
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r requirements.txt && pip install --no-deps -e .
+
+      - run: alembic upgrade head
+      # the service-backed tests skip when their env var is missing; here that
+      # would mean CI quietly ran the reduced suite, so treat any skip as a failure
+      - name: pytest
+        shell: bash
+        run: |
+          pytest -q -rs | tee pytest.log
+          ! grep -q " skipped" pytest.log
