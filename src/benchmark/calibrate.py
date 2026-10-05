@@ -237,6 +237,10 @@ def summarize(results: List[dict]) -> dict:
     }
 
 
+def fmt_prf(prf: Tuple[float, float, float]) -> str:
+    return "/".join(f"{x:.2f}" for x in prf)
+
+
 def print_summary(s: dict) -> None:
     print(f"{s['n_seeds']} seeds, {s['n_clusters']} clusters, {s['n_labeled']} labeled {s['labeled_by_tier']}\n")
     for label, key in (("Cluster mean CS by true tier", "cluster_scores"), ("kb_blind topic mean CS by true tier", "topic_scores")):
@@ -268,8 +272,7 @@ def print_summary(s: dict) -> None:
     for name, v in s["purity"].items():
         ins, lo = v["in_sample"], v["loso_mean"]
         rule = "-" if v["rule"] is None else f"dark if {'>=' if v['rule']['dark_if_above'] else '<'} {v['rule']['threshold']:.3f}"
-        fmt = lambda x: f"{x[0]:.2f}/{x[1]:.2f}/{x[2]:.2f}"
-        print(f"  {name:<25}{rule:<22}{fmt(ins['absent']):<18}{fmt(ins['thin']):<18}{ins['accuracy']:<11.0%}"
+        print(f"  {name:<25}{rule:<22}{fmt_prf(ins['absent']):<18}{fmt_prf(ins['thin']):<18}{ins['accuracy']:<11.0%}"
               f"{lo['absent_f1']:<14.2f}{lo['thin_f1']:<14.2f}{lo['accuracy']:.0%}")
     if "spec10_check" in s:
         print("\nSpec §10 dark-zone detection targets (calibrated thresholds, mean over seeds)")
