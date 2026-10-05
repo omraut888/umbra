@@ -53,7 +53,7 @@ jobs:
 
       # CPU torch first, so sentence-transformers doesn't pull the multi-GB CUDA build
       - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - run: pip install -r requirements.txt && pip install --no-deps -e .
+      - run: pip install -e ".[dev]"
 
       - run: alembic upgrade head
       # the service-backed tests skip when their env var is missing; here that

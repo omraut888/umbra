@@ -329,7 +329,7 @@ On the synthetic KB (details in [docs/findings.md](docs/findings.md)):
 Python 3.11. Postgres with pgvector is optional (results go to CSV either way).
 
 ```
-pip install -r requirements.txt && pip install -e .
+pip install -e ".[dev]"            # dev adds pytest and ruff; plain -e . is enough to run it
 cp .env.example .env              # ANTHROPIC_API_KEY, optionally POSTGRES_DSN
 
 python -m src.data.synthetic_kb_builder

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,9 +7,17 @@ name = "umbra"
 version = "0.1.0"
 description = "RAG coverage cartography: maps the blind spots of a RAG system."
 requires-python = ">=3.11"
+license = "MIT"
+dynamic = ["dependencies"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "ruff"]
 
 [project.scripts]
 umbra = "src.cli:cli"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
 
 [tool.setuptools.packages.find]
 include = ["src*"]
