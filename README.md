@@ -1,5 +1,7 @@
 # Umbra
 
+[![tests](https://github.com/omraut888/umbra/actions/workflows/test.yml/badge.svg)](https://github.com/omraut888/umbra/actions/workflows/test.yml)
+
 Umbra finds the questions a RAG system can't answer before your users do. It
 generates probe questions, sends them through the system's normal query API,
 scores how well each one is covered, and clusters the failures into named
