@@ -354,6 +354,9 @@ umbra benchmark run --seeds 0,1,2,3,4 --out out/benchmark
 umbra benchmark calibrate --out out/benchmark --write-thresholds out/thresholds.json
 umbra benchmark ablate --out out/benchmark
 umbra report ... --zone-thresholds-file out/thresholds.json   # use the fit
+
+# kill/resume stress test: ~3.8k probes, injected latency, 429s and dropped connections, two SIGKILLs
+python scripts/stress/run.py
 ```
 
 Or the whole stack in Docker: Postgres+pgvector on 5434 (same as above),

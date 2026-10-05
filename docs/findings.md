@@ -943,3 +943,31 @@ exactly. The KB-blind probe set is checked in so that part stays fixed.
 The 20-case table comes straight from `pytest tests/test_scoring.py`. The spec
 formula's five misses are pinned as strict xfails, so the comparison can't
 quietly drift.
+
+## 9. Resume holds up under faults at volume, with one path untested
+
+`audit --resume` was only tested on a handful of probes, so I ran it at
+scale with `scripts/stress/run.py`. That's 3,771 template probes at
+concurrency 50 against the mock server, behind 20–200ms latency, a 1s window
+of 429s every 8s, 3% random 429s, and a proxy that resets 4% of connections.
+The audit is SIGKILLed at 40% and again at 75% of the checkpoint, then
+resumed to the end. Two runs gave the same result:
+
+- Nothing lost or duplicated. The final CSV has 3,771 rows, each probe once,
+  in the input order, all scored. The resume state was removed on success.
+- 559–610 of ~4,450 requests failed and were retried. No probe ended up
+  failed in any run, and the most retries any one probe needed was 4.
+- Each kill cost 47–49 probes that had been answered but not checkpointed
+  (they were in flight), so resume asked them again. That's bounded by
+  `--concurrency`.
+- It took about 230s end to end. The mock server's per-query embedding
+  limits it to 31–34 probes/s, and scoring plus clustering take the last ~100s.
+
+**Untested: a checkpoint line torn by a real crash.** The checkpoint is
+rewritten on resume and skips any line that isn't valid JSON, so a write cut
+off by a kill should be dropped and that probe re-queried.
+`test_checkpoint_drops_a_line_cut_off_mid_write` covers this with a
+hand-truncated file. In the stress runs, none of the four kills landed
+mid-write (0 torn lines). Each line is small and flushed on its own, so the
+window is tiny. A real crash tearing a line is therefore untested. It's a
+known edge case, not something these runs show is covered.
