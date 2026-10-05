@@ -146,15 +146,22 @@ QUESTIONS = [
 
 
 async def test_query_many_caps_in_flight_requests(kb_path):
-    slow = create_app(kb_path, latency=0.1)
-    qs = QUESTIONS * 20
-    async with connector_for(slow) as conn:
-        start = time.monotonic()
-        out = await conn.query_many(qs, concurrency=50)
-        elapsed = time.monotonic() - start
+    latency, qs = 0.25, QUESTIONS * 10
+
+    async def timed(app):
+        async with connector_for(app) as conn:
+            start = time.monotonic()
+            out = await conn.query_many(qs, concurrency=50)
+            return out, time.monotonic() - start
+
+    # the mock server embeds every query, which takes seconds on a small CI
+    # runner; time that alone first so only the added latency is asserted on
+    _, baseline = await timed(create_app(kb_path))
+    slow = create_app(kb_path, latency=latency)
+    out, elapsed = await timed(slow)
     assert all(r.error is None for r in out) and [r.question for r in out] == qs
     assert slow.state.traffic.max_in_flight == 50
-    assert elapsed < len(qs) * 0.1 / 2  # well under serial latency; embedding is the rest
+    assert elapsed - baseline < len(qs) * latency / 2  # serial would add 15s; 50-way adds ~0.5s
 
     async with connector_for(slow) as conn:
         await conn.query_many(QUESTIONS * 3, concurrency=4)
